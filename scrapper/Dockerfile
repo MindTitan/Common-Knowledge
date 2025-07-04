@@ -8,6 +8,6 @@ RUN pip install -r requirements.txt
 
 COPY . .
 
-EXPOSE 8888
+EXPOSE 8080
 
-CMD ["uvicorn", "app.main:app", "--port", "8888", "--host", "0.0.0.0"]
+CMD ["uvicorn", "api.app:app", "--port", "8080", "--host", "0.0.0.0"]
