@@ -28,7 +28,7 @@ class ScrapedPipeline:
 
         encoded_name = get_filename_from_url(item.source_url)
 
-        scrapper_directory = spider.settings.get('SCRAPED_DIRECTORY', '/scrapped_data')
+        scrapper_directory = spider.settings.get('SCRAPED_DIRECTORY', '/scrapped-data')
         filename = f'{encoded_name}{item.file_type}.meta.json'
         full_path = os.path.join(scrapper_directory, filename)
 
@@ -44,7 +44,7 @@ class FilePipeline:
             return item
 
         encoded_name = get_filename_from_url(item.source_url)
-        scrapper_directory = spider.settings.get('SCRAPED_DIRECTORY', '/scrapped_data')
+        scrapper_directory = spider.settings.get('SCRAPED_DIRECTORY', '/scrapped-data')
         filename = f'{encoded_name}{item.extension}'
         full_path = os.path.join(scrapper_directory, filename)
         with open(full_path, 'wb') as f:

@@ -30,7 +30,7 @@ class SitemapCollectSpider(Spider):
        #  "https://www.eestipank.ee",
        #  "https://www.kredex.ee",
        #  "https://www.emta.ee",
-        "https://www.fin.ee",
+       #  "https://www.fin.ee",
     #     "https://www.ti.ee",
     #     "https://www.eakl.ee",
     #     "https://www.tooelu.ee",

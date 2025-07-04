@@ -162,8 +162,19 @@ services:
     ports:
       - 8080:8080
     volumes:
-      - ./scrapped_data:/scrapped_data
+      - ./scrapped-data:/scrapped-data
       - ./scrapper:/app
+
+  cleaning:
+    container_name: cleaning
+    build:
+      context: ./cleaning
+    ports:
+      - 8123:8123
+    volumes:
+      - ./scrapped-data:/scrapped-data
+      - ./cleaned-data:/cleaned-data
+      - ./cleaning:/app
 
 networks:
   bykstack:

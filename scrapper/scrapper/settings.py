@@ -95,5 +95,5 @@ ITEM_PIPELINES = {
 # Set settings whose default value is deprecated to a future-proof value
 FEED_EXPORT_ENCODING = "utf-8"
 ALLOWED_FILETYPES = ['.html', '.docx', '.doc', '.pdf']
-SCRAPED_DIRECTORY = "/scrapped_data"
+SCRAPED_DIRECTORY = "/scrapped-data"
 DOWNLOAD_DELAY = 0.5

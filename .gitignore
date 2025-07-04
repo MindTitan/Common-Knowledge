@@ -7,4 +7,5 @@ node_modules
 **/package-lock.json
 .vscode
 exported-data
-scrapped_data
+scrapped-data
+cleaned-data
