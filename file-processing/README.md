@@ -5,9 +5,53 @@ A FastAPI application for uploading files to blob storage with background task p
 ## Features
 
 - File upload to S3 with background task processing
-- Task status tracking in PostgreSQL
+- Task status tracking in PostgreSQL with SQLAlchemy ORM
 - Signed download URL generation
 - Provider-agnostic blob storage interface
+- Modular architecture with proper separation of concerns
+
+## Project Structure
+
+```
+file-processing/
+├── app/
+│   ├── __init__.py
+│   ├── main.py                 # FastAPI app instance and startup
+│   │   ├── __init__.py
+│   │   ├── config.py           # Settings/configuration
+│   │   ├── database.py         # Database connection setup
+│   │   └── security.py         # Auth/JWT utilities
+│   ├── api/
+│   │   ├── __init__.py
+│   │   ├── deps.py             # Common dependencies
+│   │   ├── api.py              # Main API router
+│   │   ├── upload.py           # Upload endpoints
+│   │   ├── tasks.py            # Task status endpoints
+│   │   └── download.py         # Download endpoints
+│   ├── models/
+│   │   ├── __init__.py
+│   │   └── upload_task.py      # SQLAlchemy models
+│   ├── schemas/
+│   │   ├── __init__.py
+│   │   └── upload_task.py      # Pydantic models for requests/responses
+│   ├── services/
+│   │   ├── __init__.py
+│   │   ├── blob_storage.py     # Blob storage service
+│   │   ├── task_service.py     # Task management service
+│   │   └── background_tasks.py # Background task definitions
+│   ├── utils/
+│   │   └── __init__.py
+│   └── tests/
+│       └── __init__.py
+├── alembic/                    # Database migrations
+│   ├── versions/
+│   │   └── 0001_create_upload_tasks_table.py
+│   ├── env.py
+│   └── script.py.mako
+├── requirements.txt
+├── alembic.ini
+└── README.md
+```
 
 ## Environment Variables
 
@@ -21,23 +65,42 @@ A FastAPI application for uploading files to blob storage with background task p
 
 ## Database Setup
 
-The application automatically creates the required `upload_tasks` table on startup with the following schema:
+The application uses SQLAlchemy ORM with PostgreSQL. The database schema is managed through Alembic migrations.
+
+### Running Migrations
+
+```bash
+# Run migrations
+alembic upgrade head
+
+# Create a new migration
+alembic revision --autogenerate -m "description"
+
+# Rollback migration
+alembic downgrade -1
+```
+
+### Database Schema
+
+The `upload_tasks` table is automatically created with the following schema:
 
 ```sql
 CREATE TABLE upload_tasks (
     task_id VARCHAR(36) PRIMARY KEY,
-    status VARCHAR(20) NOT NULL,
+    status taskstatus NOT NULL,
     source_file_path TEXT NOT NULL,
     blob_storage_path TEXT,
     error_message TEXT,
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
 );
+
+CREATE TYPE taskstatus AS ENUM ('pending', 'processing', 'completed', 'failed');
 ```
 
 ## API Endpoints
 
-### POST /upload
+### POST /api/v1/upload
 Upload a file to blob storage.
 
 **Request Body:**
@@ -55,7 +118,7 @@ Upload a file to blob storage.
 }
 ```
 
-### GET /tasks/{task_id}
+### GET /api/v1/tasks/{task_id}
 Get the status of an upload task.
 
 **Response:**
@@ -70,7 +133,7 @@ Get the status of an upload task.
 }
 ```
 
-### POST /download
+### POST /api/v1/download
 Generate a signed download URL for a file.
 
 **Request Body:**
@@ -90,15 +153,48 @@ Generate a signed download URL for a file.
 
 ## Running the Application
 
+### Development
+
 ```bash
-uvicorn app.main:app --host 0.0.0.0 --port 8888
+# Install dependencies
+pip install -r requirements.txt
+
+# Run migrations
+alembic upgrade head
+
+# Start the application
+uvicorn app.main:app --host 0.0.0.0 --port 8888 --reload
 ```
 
-Or using Docker:
+### Docker
 
 ```bash
+# Build the image
 docker build -t file-processing .
-docker run -p 8888:8888 file-processing
+
+# Run the container
+docker run -p 8888:8888 \
+  -e DB_URI="postgresql://user:pass@host/dbname" \
+  -e AWS_ACCESS_KEY_ID="your_key" \
+  -e AWS_SECRET_ACCESS_KEY="your_secret" \
+  -e S3_BUCKET_NAME="your_bucket" \
+  file-processing
 ```
 
-Make sure to set the required environment variables, especially `DB_URI` for PostgreSQL connection. 
+## Development
+
+### Code Structure
+
+- **Models**: SQLAlchemy ORM models in `app/models/`
+- **Schemas**: Pydantic models for API requests/responses in `app/schemas/`
+- **Services**: Business logic in `app/services/`
+- **API**: FastAPI routes in `app/api/`
+- **Core**: Configuration and database setup in `app/core/`
+
+### Adding New Features
+
+1. Create SQLAlchemy model in `app/models/`
+2. Create Pydantic schemas in `app/schemas/`
+3. Add business logic in `app/services/`
+4. Create API endpoints in `app/api/`
+5. Generate and run Alembic migration if needed 

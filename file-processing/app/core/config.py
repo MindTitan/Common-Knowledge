@@ -11,5 +11,8 @@ class Settings(BaseSettings):
     s3_bucket_name: str
     s3_presigned_url_expiration: int = 3600
 
+    class Config:
+        env_file = ".env"
 
-settings = Settings()
+
+settings = Settings() 

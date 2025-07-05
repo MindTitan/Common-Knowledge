@@ -4,7 +4,7 @@ import boto3
 from botocore.exceptions import ClientError, NoCredentialsError
 import os
 from datetime import datetime, timedelta
-from app.config import settings
+from app.core.config import settings
 
 
 class BlobStorageException(Exception):

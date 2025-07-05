@@ -2,7 +2,6 @@ from pydantic import BaseModel
 from typing import Optional
 from enum import Enum
 from datetime import datetime
-import uuid
 
 
 class TaskStatus(str, Enum):
@@ -30,6 +29,9 @@ class TaskStatusResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+    class Config:
+        from_attributes = True
+
 
 class DownloadFileRequest(BaseModel):
     blob_storage_path: str
@@ -37,4 +39,4 @@ class DownloadFileRequest(BaseModel):
 
 class DownloadFileResponse(BaseModel):
     download_url: str
-    expires_at: datetime
+    expires_at: datetime 
