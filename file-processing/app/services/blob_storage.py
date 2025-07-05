@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Optional
+from datetime import datetime
 
 
 class BlobStorageException(Exception):
@@ -12,7 +12,7 @@ class BlobStorageProvider(ABC):
         pass
 
     @abstractmethod
-    def generate_download_url(self, blob_path: str, expiration_seconds: int = 3600) -> str:
+    def generate_download_url(self, blob_path: str) -> tuple[str, datetime]:
         pass
 
     @abstractmethod
@@ -20,6 +20,9 @@ class BlobStorageProvider(ABC):
         pass
 
 
-def get_blob_storage_provider() -> BlobStorageProvider:
-    from app.services.s3 import get_s3_blob_storage_provider
-    return get_s3_blob_storage_provider() 
+def get_blob_storage_provider(provider_name: str) -> BlobStorageProvider:
+    if provider_name == "s3":
+        from app.services.s3_provider import s3_provider
+        return s3_provider
+    else:
+        raise BlobStorageException(f"Invalid provider name: {provider_name}")

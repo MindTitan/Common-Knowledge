@@ -1,7 +1,7 @@
 from sqlalchemy import Column, String, Text, DateTime, Enum as SQLEnum
 from sqlalchemy.sql import func
 from app.core.database import Base
-from app.schemas.upload_task import TaskStatus
+from app.schemas import TaskStatus
 
 
 class UploadTask(Base):

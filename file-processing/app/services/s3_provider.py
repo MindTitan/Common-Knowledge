@@ -1,11 +1,12 @@
 import boto3
-from botocore.exceptions import ClientError, NoCredentialsError
 import os
+from datetime import datetime, timedelta
+from botocore.exceptions import ClientError, NoCredentialsError
 from app.services.blob_storage import BlobStorageProvider, BlobStorageException
 from app.core.config import settings
 
 
-class S3BlobStorageProvider(BlobStorageProvider):
+class S3Provider(BlobStorageProvider):
     def __init__(self):
         self.s3_client = boto3.client(
             's3',
@@ -33,7 +34,7 @@ class S3BlobStorageProvider(BlobStorageProvider):
         except Exception as e:
             raise BlobStorageException(f"Upload failed: {str(e)}")
 
-    def generate_download_url(self, blob_path: str, expiration_seconds: int = 3600) -> str:
+    def generate_download_url(self, blob_path: str) -> tuple[str, datetime]:
         try:
             if not self.file_exists(blob_path):
                 raise BlobStorageException(f"File not found in blob storage: {blob_path}")
@@ -44,9 +45,11 @@ class S3BlobStorageProvider(BlobStorageProvider):
                     'Bucket': self.bucket_name,
                     'Key': blob_path
                 },
-                ExpiresIn=expiration_seconds
+                ExpiresIn=settings.s3_presigned_url_expiration
             )
-            return url
+            expires_at = datetime.now(datetime.UTC).replace(microsecond=0) + timedelta(seconds=settings.s3_presigned_url_expiration)
+
+            return url, expires_at
         except NoCredentialsError:
             raise BlobStorageException("AWS credentials not found")
         except ClientError as e:
@@ -66,5 +69,4 @@ class S3BlobStorageProvider(BlobStorageProvider):
             raise BlobStorageException(f"Error checking file existence: {str(e)}")
 
 
-def get_s3_blob_storage_provider() -> S3BlobStorageProvider:
-    return S3BlobStorageProvider()
+s3_provider = S3Provider()
