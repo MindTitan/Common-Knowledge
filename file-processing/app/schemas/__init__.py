@@ -20,7 +20,15 @@ class FileUploadResponse(BaseModel):
     status: str = "pending"
 
 
-class TaskStatusResponse(BaseModel):
+class DownloadFileRequest(BaseModel):
+    blob_storage_path: str
+
+
+class DownloadFileResponse(BaseModel):
+    download_url: str
+    expires_at: datetime
+
+class UploadTaskStatusResponse(BaseModel):
     task_id: str
     status: TaskStatus
     source_file_path: str
@@ -31,12 +39,3 @@ class TaskStatusResponse(BaseModel):
 
     class Config:
         from_attributes = True
-
-
-class DownloadFileRequest(BaseModel):
-    blob_storage_path: str
-
-
-class DownloadFileResponse(BaseModel):
-    download_url: str
-    expires_at: datetime
