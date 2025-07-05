@@ -4,7 +4,7 @@ from typing import Optional
 from sqlalchemy.orm import Session
 from app.models.upload_task import UploadTask
 from app.schemas.upload_task import TaskStatus, TaskStatusResponse
-from app.services.blob_storage import get_blob_storage_provider, BlobStorageException
+from app.services import get_blob_storage_provider, BlobStorageException
 from app.core.config import settings
 import os
 
@@ -65,4 +65,4 @@ class TaskService:
             self.update_task_status(db, task_id, TaskStatus.FAILED, error_message=f"Unexpected error: {str(e)}")
 
 
-task_service = TaskService() 
+task_service = TaskService()

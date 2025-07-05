@@ -7,3 +7,12 @@ node_modules
 **/package-lock.json
 .vscode
 exported-data
+
+
+# FastAPI / Python related
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+__pycache__
+.DS_Store

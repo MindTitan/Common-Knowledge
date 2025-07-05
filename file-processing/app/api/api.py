@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api import upload, tasks, download
+from app.api.endpoints import upload, tasks, download
 
 api_router = APIRouter()
 
