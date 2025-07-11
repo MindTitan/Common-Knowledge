@@ -4,7 +4,7 @@ import sys
 from scrapy.crawler import CrawlerProcess
 from scrapy.utils.project import get_project_settings
 
-from api.models import SinglePageScrapperTask
+from api.models import SpecifiedLinksScrapeTask
 
 from scrapper.spiders.sitemap_collect_spider import SitemapCollectSpider
 
@@ -13,9 +13,9 @@ from scrapper.spiders.sitemap_collect_spider import SitemapCollectSpider
 
 
 def main():
-    task = SinglePageScrapperTask(**json.loads(sys.argv[1][1:-1]))
+    task = SpecifiedLinksScrapeTask(**json.loads(sys.argv[1][1:-1]))
     process = CrawlerProcess(get_project_settings())
-    process.crawl(SitemapCollectSpider, start_urls=[task.url.unicode_string()])
+    process.crawl(SitemapCollectSpider, task=task)
     process.start()
 
 

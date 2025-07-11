@@ -6,6 +6,7 @@
 #     https://docs.scrapy.org/en/latest/topics/settings.html
 #     https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
 #     https://docs.scrapy.org/en/latest/topics/spider-middleware.html
+import os
 
 BOT_NAME = "scrapper"
 
@@ -66,8 +67,10 @@ ROBOTSTXT_OBEY = True
 # Configure item pipelines
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
-   "scrapper.pipelines.ScrapedPipeline": 300,
+   "scrapper.pipelines.CreateDirectoryPipeline": 200,
+   "scrapper.pipelines.MetadataPipeline": 300,
    "scrapper.pipelines.FilePipeline": 800,
+   "scrapper.pipelines.TriggerCleaningPipeline": 850,
    "scrapper.pipelines.VisitedUrlsPipeline": 999,
 }
 
@@ -94,6 +97,7 @@ ITEM_PIPELINES = {
 
 # Set settings whose default value is deprecated to a future-proof value
 FEED_EXPORT_ENCODING = "utf-8"
-ALLOWED_FILETYPES = ['.html', '.docx', '.doc', '.pdf']
-SCRAPED_DIRECTORY = "/scrapped-data"
+ALLOWED_FILETYPES = os.environ.get('SUPPORTED_TYPES', '.html,.docx,.doc,.pdf').split(',')
+SCRAPED_DIRECTORY = os.environ.get('SCRAPED_DIRECTORY', "/scrapped-data")
+RUUTER_PRIVATE = os.environ.get('RUUTER_PRIVATE', "http://ruuter-private:8089")
 DOWNLOAD_DELAY = 0.5

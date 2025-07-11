@@ -7,7 +7,8 @@ from urllib.parse import urljoin, urlparse
 from scrapy import Spider, Request
 from scrapy.http import Response
 
-from scrapper.items import FileItem, ScrappedItem, Metadata
+from api.models import SitemapCollectScrapperTask
+from scrapper.items import FileItem, MetadataItem, Metadata, ScrappedItem
 
 
 class SitemapCollectSpider(Spider):
@@ -84,6 +85,11 @@ class SitemapCollectSpider(Spider):
         self.valid_urls = set()
         self.hashes = set()
 
+        if isinstance(kwargs.get('task'), SitemapCollectScrapperTask):
+            self.task: SitemapCollectScrapperTask  = kwargs.get('task')
+            self.start_urls = [self.task.url.unicode_string()]
+
+
     def get_pure_domain(self, url: str) -> str:
         parsed_url = urlparse(url)
         netloc = parsed_url.netloc
@@ -118,9 +124,12 @@ class SitemapCollectSpider(Spider):
             return
         self.hashes.add(hashed)
 
-        yield FileItem(body=response.body, source_url=response.url, extension=file_extension)
+        file_item = FileItem(body=response.body, source_url=response.url, extension=file_extension)
 
-        yield ScrappedItem(file_type=file_extension, metadata=Metadata(), source_url=response.url)
+        metadata_item = MetadataItem(file_type=file_extension, metadata=Metadata(), source_url=response.url)
+
+        scrapped_item = ScrappedItem(file=file_item, metadata=metadata_item)
+        yield scrapped_item
 
         if file_extension != '.html':
             return

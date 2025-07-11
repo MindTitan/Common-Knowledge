@@ -1,4 +1,4 @@
-FROM python:3.13
+FROM python:3.13 AS build
 
 WORKDIR /app
 RUN mkdir /scrapped-data
@@ -10,4 +10,11 @@ COPY . .
 
 EXPOSE 8080
 
+
+FROM build AS server
+
 CMD ["uvicorn", "api.app:app", "--port", "8080", "--host", "0.0.0.0"]
+
+FROM build as celery
+
+CMD ["celery", "-A", "worker.tasks", "worker", "--loglevel=INFO", "-E"]

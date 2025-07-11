@@ -1,9 +1,16 @@
 from pydantic import BaseModel, HttpUrl
 
 
-class SinglePageScrapperTask(BaseModel):
-    url: HttpUrl
+class BaseObject(BaseModel):
+    agency_name: str
+    agency_id: str
+    source_name: str
+    source_id: str
 
 
-class SitemapCollectScrapperTask(BaseModel):
+class SpecifiedLinksScrapeTask(BaseObject):
+    urls: list[HttpUrl]
+
+
+class SitemapCollectScrapperTask(BaseObject):
     url: HttpUrl

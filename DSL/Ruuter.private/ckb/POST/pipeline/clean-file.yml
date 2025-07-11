@@ -1,0 +1,39 @@
+declaration:
+  call: declare
+  version: 0.1
+  description: "clean scrapped files"
+  method: post
+  accepts: json
+  returns: json
+  namespace: ckb
+  allowlist:
+    body:
+      - field: file_path
+        type: string
+        description: "filename with scraped data"
+      - field: meta_data_path
+        type: string
+        description: "filename with metadata for scrapped data"
+      - field: directory_path
+        type: string
+        description: "directory, where to save cleaned data"
+
+
+extractRequestData:
+  assign:
+    file_path: ${incoming.body.file_path}
+    meta_data_path: ${incoming.body.meta_data_path}
+    directory_path: ${incoming.body.directory_path}
+
+cleanData:
+  call: http.post
+  args:
+    url: "[#CLEANING_SERVICE]/clean_file"
+    body:
+      file_path: ${file_path}
+      meta_data_path: ${meta_data_path}
+      directory_path: ${directory_path}
+  result: res
+
+return_result:
+  return: ${incoming.body}

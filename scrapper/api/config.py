@@ -1,8 +1,9 @@
-from pydantic import DirectoryPath
 from pydantic_settings import BaseSettings
+from pydantic import AnyUrl
+
 
 class Settings(BaseSettings):
-    cleaned_data_path: DirectoryPath = '/cleaned-data'
+    broker_url: AnyUrl
 
 
 settings = Settings()
