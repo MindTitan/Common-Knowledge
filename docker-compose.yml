@@ -27,7 +27,7 @@ services:
       - sqlms.datasources.[0].password=2nH09n6Gly
       - logging.level.org.springframework.boot=INFO
     ports:
-      - 8088:8088
+      - 8087:8088
     volumes:
       - ./DSL/Resql:/workspace/app/templates
     networks:
@@ -91,7 +91,7 @@ services:
       - ./DSL/Ruuter.private:/DSL
       - ./constants.ini:/app/constants.ini
     ports:
-      - 8080:8080
+      - 8088:8080
     networks:
       - bykstack
     cpus: "0.5"
