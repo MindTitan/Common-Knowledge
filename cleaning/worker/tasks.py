@@ -14,7 +14,7 @@ app = Celery('ckb', broker=settings.broker_url.unicode_string())
 @app.task
 @un_json(EntityToClean)
 def clean_file_task(entity: EntityToClean):
-    partitioned = partition(filename=entity.file_path.as_posix())
+    partitioned = partition(filename=entity.file_path.as_posix(), languages=settings.languages)
     cleaned_text = '\n\n'.join([str(el) for el in partitioned])
 
     cleaned_text_filename = entity.directory_path / 'cleaned.txt'
