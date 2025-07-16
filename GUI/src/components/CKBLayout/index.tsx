@@ -14,6 +14,7 @@ const Layout: FC = () => {
       id: 'data',
       label: t('menu.data'),
       path: '/agency',
+      activeRoutes: ['/agency', '/source'],
       icon: <MdOutlineStorage />,
     },
     {

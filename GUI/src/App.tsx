@@ -13,10 +13,11 @@ import Settings from 'pages/Settings';
 import Files from 'pages/Files';
 import Reports from 'pages/Reports';
 import Report from 'pages/Reports/Report';
-import AddAgency from 'pages/Agency/AddAgency';
-
+import AddAgency from 'pages/Agency/SaveAgency';
+import { useCookies } from 'react-cookie';
 import './locale/et_EE';
 
+const customJwtCookieKey = 'customJwtCookie';
 const App: FC = () => {
   useQuery<{
     data: { custom_jwt_userinfo: UserInfo };
@@ -27,6 +28,7 @@ const App: FC = () => {
       return useStore.getState().setUserInfo(res.response);
     },
   });
+  const [_, setCookie] = useCookies([customJwtCookieKey]);
 
   return (
     <Routes>
@@ -35,11 +37,11 @@ const App: FC = () => {
         <Route path="/agency" element={<AgencyList />} />
         <Route path="/agency/add" element={<AddAgency />} />
         <Route path="/agency/:id" element={<Agency />} />
-        <Route path="/pages" element={<Pages />} />
+        <Route path="/source/:id/files" element={<Pages />} />
         <Route path="/files" element={<Files />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/reports/:id" element={<Report />} />
-        <Route path="/settings" element={<Settings />} />
+        <Route path="/source/:id/schedule" element={<Settings />} />
       </Route>
     </Routes>
   );

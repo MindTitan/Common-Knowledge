@@ -1,12 +1,13 @@
-import { FC, useState } from 'react';
+import { FC, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, Link } from 'react-router-dom';
 import {
   MdRefresh,
   MdOutlineViewColumn,
   MdOutlineTableChart,
   MdGridView,
+  MdOutlineDeleteOutline,
 } from 'react-icons/md';
 import {
   Button,
@@ -18,144 +19,260 @@ import {
   Track,
   SwitchBox,
   Editor,
+  Tooltip,
 } from 'components';
-import { ColumnDef } from '@tanstack/react-table';
+import {
+  ColumnDef,
+  PaginationState,
+  SortingState,
+  ColumnFiltersState,
+} from '@tanstack/react-table';
 import { useToast } from 'hooks/useToast';
-import { apiDev } from 'services/api';
 import 'pages/Agency/AgencyList.scss';
-
-interface UrlItem {
-  id: string;
-  url: string;
-  scraped: string;
-  pageTitle: string;
-  status: string;
-}
+import {
+  getScrapedFiles,
+  updateFileExclusion,
+  refreshScrapedFile,
+  deleteFile,
+  getFileRawContent,
+  getFileCleanedContent,
+  getFileEditedContent,
+  updateFileEditedContent,
+  ScrapedFile,
+  ScrapedFilesListParams,
+} from 'services/files';
+import { getSource } from 'services/sources';
 
 interface FormData {
-  url: string;
   search: string;
 }
 
-const KnowledgeBaseDetail: FC = () => {
+interface EditorState {
+  type: 'raw' | 'cleaned' | 'edited';
+  fileId: string;
+  content: string;
+}
+
+const ScrapedFiles: FC = () => {
   const { t } = useTranslation();
   const toast = useToast();
-  const { agency, domain } = useParams<{ agency: string; domain: string }>();
+  const queryClient = useQueryClient();
+  const { id: sourceId } = useParams<{ id: string }>();
 
-  const [addUrlModal, setAddUrlModal] = useState(false);
-  const [editorState, setEditorState] = useState<
-    'raw' | 'cleaned' | 'edited' | null
-  >(null);
-  const [deleteModal, setDeleteModal] = useState<UrlItem | null>(null);
+  const [deleteModal, setDeleteModal] = useState<ScrapedFile | null>(null);
+  const [editorState, setEditorState] = useState<EditorState | null>(null);
   const [formData, setFormData] = useState<FormData>({
-    url: '',
     search: '',
   });
 
-  // Mock data - replace with actual API call
-  const { data: urlData, refetch } = useQuery<{
-    data: UrlItem[];
-    total: number;
-  }>({
-    queryKey: ['knowledge-base-urls', agency, domain],
-    queryFn: async () => ({
-      data: [
-        {
-          id: '1',
-          url: 'https://www.riigiteataja.ee/akt/324092024001',
-          scraped: '06.05.2024 10:08',
-          pageTitle: 'Eraisik',
-          status: 'done',
-        },
-        {
-          id: '2',
-          url: 'https://www.riigiteataja.ee/akt/324092024001',
-          scraped: '06.05.2024 10:08',
-          pageTitle: 'Ettevõte',
-          status: 'cleaning',
-        },
-        {
-          id: '3',
-          url: 'https://www.riigiteataja.ee/akt/324092024001',
-          scraped: '06.05.2024 10:08',
-          pageTitle: 'Kontakt',
-          status: 'notFound',
-        },
-      ],
-      total: 170,
-    }),
+  // Table state for server-side pagination and sorting
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: 10,
   });
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
-  const handleAddUrl = async () => {
-    try {
-      await apiDev.post(`knowledge-base/${agency}/${domain}/urls`, formData);
-      setAddUrlModal(false);
-      setFormData({ url: '' });
-      refetch();
-      toast.open({
-        type: 'success',
-        title: t('global.notification'),
-        message: t('knowledgeBase.urlAddedSuccess'),
-      });
-    } catch (error) {
-      toast.open({
-        type: 'error',
-        title: t('global.notificationError'),
-        message: t('knowledgeBase.urlAddError'),
-      });
-    }
+  // Convert sorting state to API format
+  const getSortingParam = (sorting: SortingState): string => {
+    if (sorting.length === 0) return 'last_scraped_at desc';
+
+    const sort = sorting[0];
+    let field = sort.id;
+
+    // Map column IDs to API field names
+    const fieldMap: Record<string, string> = {
+      url: 'url',
+      pageTitle: 'page_title',
+      isExcluded: 'is_excluded',
+      status: 'status',
+      lastScrapedAt: 'last_scraped_at',
+    };
+
+    field = fieldMap[field] || field;
+    return `${field} ${sort.desc ? 'desc' : 'asc'}`;
   };
 
-  const handleRefresh = async (item: UrlItem) => {
-    try {
-      await apiDev.post(`knowledge-base/urls/${item.id}/refresh`);
-      refetch();
+  // API query parameters
+  const queryParams: ScrapedFilesListParams = useMemo(
+    () => ({
+      sourceId: sourceId,
+      page: pagination.pageIndex + 1,
+      pageSize: pagination.pageSize,
+      sorting: getSortingParam(sorting),
+    }),
+    [sourceId, pagination.pageIndex, pagination.pageSize, sorting]
+  );
+
+  // Fetch source data for header
+  const { data: sourceData } = useQuery({
+    queryKey: ['source', sourceId],
+    queryFn: () => getSource(sourceId!),
+    enabled: !!sourceId,
+  });
+
+  // Fetch scraped files data
+  const {
+    data: scrapedFilesData,
+    isLoading,
+    refetch,
+  } = useQuery({
+    queryKey: ['scrapedFiles', queryParams],
+    queryFn: () => getScrapedFiles(queryParams),
+    enabled: !!sourceId,
+    keepPreviousData: true,
+  });
+
+  // Refresh file mutation
+  const refreshMutation = useMutation({
+    mutationFn: refreshScrapedFile,
+    onSuccess: () => {
       toast.open({
         type: 'success',
         title: t('global.notification'),
         message: t('knowledgeBase.urlRefreshed'),
       });
-    } catch (error) {
+      queryClient.invalidateQueries(['scrapedFiles']);
+    },
+    onError: (error: any) => {
       toast.open({
         type: 'error',
         title: t('global.notificationError'),
-        message: t('knowledgeBase.refreshError'),
+        message: error.message || t('knowledgeBase.refreshError'),
       });
-    }
-  };
+    },
+  });
 
-  const handleDelete = async () => {
-    if (!deleteModal) return;
-
-    try {
-      await apiDev.delete(`knowledge-base/urls/${deleteModal.id}`);
-      setDeleteModal(null);
-      refetch();
+  // Delete file mutation
+  const deleteMutation = useMutation({
+    mutationFn: deleteFile,
+    onSuccess: () => {
       toast.open({
         type: 'success',
         title: t('global.notification'),
         message: t('knowledgeBase.urlDeleteSuccess'),
       });
+      setDeleteModal(null);
+      queryClient.invalidateQueries(['scrapedFiles']);
+    },
+    onError: (error: any) => {
+      toast.open({
+        type: 'error',
+        title: t('global.notificationError'),
+        message: error.message || t('knowledgeBase.deleteError'),
+      });
+    },
+  });
+
+  // Update exclusion mutation
+  const updateExclusionMutation = useMutation({
+    mutationFn: ({
+      fileId,
+      isExcluded,
+    }: {
+      fileId: string;
+      isExcluded: boolean;
+    }) => updateFileExclusion(fileId, isExcluded),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['scrapedFiles']);
+    },
+    onError: (error: any) => {
+      toast.open({
+        type: 'error',
+        title: t('global.notificationError'),
+        message: error.message || t('knowledgeBase.updateError'),
+      });
+    },
+  });
+
+  // Save edited content mutation
+  const saveContentMutation = useMutation({
+    mutationFn: ({ fileId, content }: { fileId: string; content: string }) =>
+      updateFileEditedContent(fileId, content),
+    onSuccess: () => {
+      toast.open({
+        type: 'success',
+        title: t('global.notification'),
+        message: t('knowledgeBase.contentSaved'),
+      });
+      setEditorState(null);
+      queryClient.invalidateQueries(['scrapedFiles']);
+    },
+    onError: (error: any) => {
+      toast.open({
+        type: 'error',
+        title: t('global.notificationError'),
+        message: error.message || t('knowledgeBase.saveError'),
+      });
+    },
+  });
+
+  const handleRefresh = (file: ScrapedFile) => {
+    refreshMutation.mutate(file.id);
+  };
+
+  const handleDelete = () => {
+    if (!deleteModal) return;
+    deleteMutation.mutate(deleteModal.baseId);
+  };
+
+  const handleExclusionToggle = (file: ScrapedFile, isExcluded: boolean) => {
+    updateExclusionMutation.mutate({
+      fileId: file.baseId,
+      isExcluded,
+    });
+  };
+
+  const handleViewContent = async (
+    file: ScrapedFile,
+    type: 'raw' | 'cleaned' | 'edited'
+  ) => {
+    try {
+      let content = '';
+      switch (type) {
+        case 'raw':
+          content = await getFileRawContent(file.id);
+          break;
+        case 'cleaned':
+          content = await getFileCleanedContent(file.id);
+          break;
+        case 'edited':
+          content = await getFileEditedContent(file.id);
+          break;
+      }
+
+      setEditorState({
+        type,
+        fileId: file.id,
+        content,
+      });
     } catch (error) {
       toast.open({
         type: 'error',
         title: t('global.notificationError'),
-        message: t('knowledgeBase.deleteError'),
+        message: t('knowledgeBase.contentLoadError'),
       });
     }
   };
 
-  const handleViewRaw = (item: UrlItem) => {
-    // Open raw data view
-    window.open(`/knowledge-base/urls/${item.id}/raw`, '_blank');
+  const handleSaveContent = (content: string) => {
+    if (!editorState) return;
+
+    saveContentMutation.mutate({
+      fileId: editorState.fileId,
+      content,
+    });
   };
 
-  const handleViewProcessed = (item: UrlItem) => {
-    // Open processed data view
-    window.open(`/knowledge-base/urls/${item.id}/processed`, '_blank');
+  const handlePaginationChange = (newPagination: PaginationState) => {
+    setPagination(newPagination);
   };
 
-  const columns: ColumnDef<UrlItem>[] = [
+  const handleSortingChange = (newSorting: SortingState) => {
+    setSorting(newSorting);
+  };
+
+  const columns: ColumnDef<ScrapedFile>[] = [
     {
       accessorKey: 'url',
       header: t('knowledgeBase.url'),
@@ -167,7 +284,18 @@ const KnowledgeBaseDetail: FC = () => {
           rel="noopener noreferrer"
           style={{ textDecoration: 'underline', color: '#005AA3' }}
         >
-          <div className="agencies__agency-cell">{row.original.url}</div>
+          <Tooltip content={row.original.url}>
+            <div
+              style={{
+                maxWidth: 500,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+              className="agencies__agency-cell"
+            >
+              {row.original.url}
+            </div>
+          </Tooltip>
         </a>
       ),
     },
@@ -175,8 +303,20 @@ const KnowledgeBaseDetail: FC = () => {
       accessorKey: 'pageTitle',
       header: t('knowledgeBase.pageTitle'),
       enableColumnFilter: false,
+
       cell: ({ row }) => (
-        <div style={{ minWidth: 100 }}>{row.original.pageTitle}</div>
+        <Tooltip content={row.original.pageTitle}>
+          <div
+            style={{
+              minWidth: 100,
+              maxWidth: 120,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+          >
+            {row.original.pageTitle}
+          </div>
+        </Tooltip>
       ),
     },
     {
@@ -190,7 +330,9 @@ const KnowledgeBaseDetail: FC = () => {
           style={{ width: 'max-content' }}
         >
           <Button
-            disabled={row.original.status === 'cleaning'}
+            disabled={
+              row.original.status === 'cleaning' || refreshMutation.isLoading
+            }
             appearance="text"
             className="agencies__action-btn"
             size="s"
@@ -204,7 +346,7 @@ const KnowledgeBaseDetail: FC = () => {
             appearance="text"
             className="agencies__action-btn"
             size="s"
-            onClick={() => setEditorState('raw')}
+            onClick={() => handleViewContent(row.original, 'raw')}
           >
             <Icon icon={<MdOutlineViewColumn fontSize={20} />} size="medium" />
             {t('knowledgeBase.raw')}
@@ -214,7 +356,7 @@ const KnowledgeBaseDetail: FC = () => {
             appearance="text"
             className="agencies__action-btn"
             size="s"
-            onClick={() => setEditorState('cleaned')}
+            onClick={() => handleViewContent(row.original, 'cleaned')}
           >
             <Icon icon={<MdOutlineTableChart fontSize={20} />} size="medium" />
             {t('knowledgeBase.cleaned')}
@@ -224,24 +366,45 @@ const KnowledgeBaseDetail: FC = () => {
             disabled={row.original.status === 'cleaning'}
             className="agencies__action-btn"
             size="s"
-            onClick={() => setEditorState('edited')}
+            onClick={() => handleViewContent(row.original, 'edited')}
           >
             <Icon icon={<MdGridView fontSize={20} />} size="medium" />
             {t('knowledgeBase.edited')}
+          </Button>
+          <Button
+            appearance="text"
+            disabled={row.original.status === 'cleaning'}
+            className="agencies__action-btn"
+            size="s"
+            onClick={() => setDeleteModal(row.original)}
+          >
+            <Icon
+              icon={<MdOutlineDeleteOutline fontSize={20} />}
+              size="medium"
+            />
+            {t('global.delete')}
           </Button>
         </Track>
       ),
     },
     {
+      accessorKey: 'excluded',
       id: 'excluded',
-      header: (
-        <div
-          style={{ display: 'flex', justifyContent: 'center', width: '100%' }}
-        >
-          {t('knowledgeBase.excluded')}
-        </div>
+      enableColumnFilter: false,
+      header: t('knowledgeBase.excluded'),
+      cell: ({ row }) => (
+        <SwitchBox
+          label=""
+          checked={row.original.isExcluded}
+          onCheckedChange={(checked) =>
+            handleExclusionToggle(row.original, checked)
+          }
+          disabled={
+            updateExclusionMutation.isLoading ||
+            row.original.status === 'cleaning'
+          }
+        />
       ),
-      cell: ({ row }) => <SwitchBox label="" />,
     },
     {
       accessorKey: 'status',
@@ -268,24 +431,44 @@ const KnowledgeBaseDetail: FC = () => {
       enableColumnFilter: false,
     },
     {
-      accessorKey: 'scraped',
+      accessorKey: 'lastScrapedAt',
       header: t('knowledgeBase.scraped'),
       enableColumnFilter: false,
+      cell: ({ row }) => (
+        <span>
+          {new Date(row.original.lastScrapedAt).toLocaleString('et-EE', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          })}
+        </span>
+      ),
     },
   ];
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <>
       {editorState && (
         <Dialog size="fullscreen" onClose={() => setEditorState(null)}>
           <Editor
-            changeEditorState={setEditorState}
-            editorState={editorState}
+            changeEditorState={() => {}}
+            editorState={editorState.type}
+            content={editorState.content}
+            readonly={editorState.type !== 'edited'}
             onCancel={() => setEditorState(null)}
-            onSave={() => setEditorState(null)}
+            onSave={
+              editorState.type === 'edited' ? handleSaveContent : undefined
+            }
           />
         </Dialog>
       )}
+
       <div className="agencies">
         <Track
           style={{ marginBottom: 16, width: '100%' }}
@@ -293,7 +476,12 @@ const KnowledgeBaseDetail: FC = () => {
           align="center"
         >
           <div>
-            <span className="agencies__agency">EMTA / www.emta.ee</span>
+            <Link
+              to={`/agency/${sourceData?.agencyBaseId}`}
+              style={{ textDecoration: 'none' }}
+            >
+              <span className="agencies__agency">{sourceData?.url}</span>
+            </Link>
           </div>
         </Track>
 
@@ -312,55 +500,26 @@ const KnowledgeBaseDetail: FC = () => {
           }
         >
           <DataTable
-            data={urlData?.data ?? []}
+            data={scrapedFilesData?.data ?? []}
             columns={columns}
-            pagination={{
-              pageIndex: 0,
-              pageSize: 10,
-            }}
+            pagination={pagination}
+            setPagination={handlePaginationChange}
+            sorting={sorting}
+            setSorting={handleSortingChange}
+            columnFilters={columnFilters}
+            setFiltering={setColumnFilters}
             sortable
             filterable
-            pagesCount={Math.ceil((urlData?.total ?? 0) / 10)}
+            pagesCount={scrapedFilesData?.totalPages ?? 0}
+            isClientSide={false}
           />
 
           <div className="agencies__footer">
             <span className="agencies__total">
-              {urlData?.total ?? 0} {t('knowledgeBase.results')}
+              {scrapedFilesData?.total ?? 0} {t('knowledgeBase.results')}
             </span>
           </div>
         </Card>
-
-        {/* Add URL Modal */}
-        {addUrlModal && (
-          <Dialog
-            title={t('knowledgeBase.addUrlTitle')}
-            onClose={() => setAddUrlModal(false)}
-            footer={
-              <Track gap={16} justify="end">
-                <Button
-                  appearance="secondary"
-                  onClick={() => setAddUrlModal(false)}
-                >
-                  {t('global.cancel')}
-                </Button>
-                <Button appearance="primary" onClick={handleAddUrl}>
-                  {t('knowledgeBase.addUrl')}
-                </Button>
-              </Track>
-            }
-          >
-            <Track direction="vertical" gap={16}>
-              <FormInput
-                label={t('knowledgeBase.websiteUrl')}
-                name="websiteUrl"
-                type="url"
-                placeholder="https://example.com"
-                value={formData.url}
-                onChange={(e) => setFormData({ url: e.target.value })}
-              />
-            </Track>
-          </Dialog>
-        )}
 
         {/* Delete Confirmation Modal */}
         {deleteModal && (
@@ -372,11 +531,18 @@ const KnowledgeBaseDetail: FC = () => {
                 <Button
                   appearance="secondary"
                   onClick={() => setDeleteModal(null)}
+                  disabled={deleteMutation.isLoading}
                 >
                   {t('global.cancel')}
                 </Button>
-                <Button appearance="error" onClick={handleDelete}>
-                  {t('global.delete')}
+                <Button
+                  appearance="error"
+                  onClick={handleDelete}
+                  disabled={deleteMutation.isLoading}
+                >
+                  {deleteMutation.isLoading
+                    ? t('global.deleting')
+                    : t('global.delete')}
                 </Button>
               </Track>
             }
@@ -393,4 +559,4 @@ const KnowledgeBaseDetail: FC = () => {
   );
 };
 
-export default KnowledgeBaseDetail;
+export default ScrapedFiles;
