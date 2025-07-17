@@ -165,6 +165,51 @@ services:
       - 9010:9010
     networks:
       - bykstack
+
+  opensearch-node:
+    image: opensearchproject/opensearch:2.11.1
+    container_name: opensearch-node
+    environment:
+      - node.name=opensearch-node
+      - discovery.seed_hosts=opensearch
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - plugins.security.disabled=true
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    ports:
+      - 9200:9200
+      - 9600:9600
+    networks:
+      - bykstack
+
+  search-service:
+    container_name: search-service
+    build:
+      context: ./search-service
+      dockerfile: Dockerfile
+    environment:
+      - OPENSEARCH_URL=http://opensearch-node:9200
+      - DATA_PATH=/app/data
+      - PORT=3000
+    depends_on:
+      - opensearch-node
+    ports:
+      - 3009:3000
+    networks:
+      - bykstack
+    volumes:
+      - ./search-data:/app/data
+    restart: unless-stopped
+
   tim:
     container_name: tim
     image: tim
@@ -196,6 +241,8 @@ services:
       - 9876:5432
     networks:
       - bykstack
+volumes:
+  opensearch-data:
 networks:
   bykstack:
     name: bykstack
