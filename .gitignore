@@ -7,9 +7,8 @@ node_modules
 **/package-lock.json
 .vscode
 exported-data
+.env
 
-
-# FastAPI / Python related
 *.pyc
 *.pyo
 *.pyd

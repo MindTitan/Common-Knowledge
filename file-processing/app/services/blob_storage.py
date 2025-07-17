@@ -26,3 +26,6 @@ def get_blob_storage_provider(provider_name: str) -> BlobStorageProvider:
         return s3_provider
     else:
         raise BlobStorageException(f"Invalid provider name: {provider_name}")
+
+
+storage_provider = get_blob_storage_provider('s3')

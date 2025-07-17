@@ -4,10 +4,8 @@ from typing import Optional
 from sqlalchemy.orm import Session
 from app.models import UploadTaskModel
 from app.schemas import TaskStatus, UploadTaskStatusResponse
-from app.services import get_blob_storage_provider, BlobStorageException
+from app.services.blob_storage import storage_provider, BlobStorageException
 from app.core.config import settings
-
-storage_provider = get_blob_storage_provider('s3')
 
 def create_task(db: Session, source_file_path: str) -> str:
     """Create a new upload task in the database."""

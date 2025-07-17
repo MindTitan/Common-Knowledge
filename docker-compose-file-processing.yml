@@ -1,0 +1,29 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  file-processing:
+    build:
+      context: ./file-processing
+      dockerfile: Dockerfile
+    ports:
+      - "8888:8888"
+    env_file:
+      - .env
+    volumes:
+      - ./file-processing:/app
+      - file_processing_source:/source
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  file_processing_source:
