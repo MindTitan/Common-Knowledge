@@ -1,0 +1,31 @@
+declaration:
+  call: declare
+  version: 0.1
+  description: "Delete an agency by base ID"
+  method: post
+  accepts: json
+  returns: json
+  namespace: agency
+  allowlist:
+    body:
+      - field: baseId
+        type: string
+        description: "Base ID of the agency to delete"
+
+extractRequestData:
+  assign:
+    base_id: "${incoming.body.baseId}"
+
+deleteAgency:
+  call: http.post
+  args:
+    url: "[#CKB_RESQL]/agency/delete_agency"
+    headers:
+      type: json
+    body:
+      base_id: ${base_id}
+  result: res
+
+returnSuccess:
+  return: ${res.response.body}
+  next: end
