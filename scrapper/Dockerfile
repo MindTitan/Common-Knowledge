@@ -15,6 +15,6 @@ FROM build AS server
 
 CMD ["uvicorn", "api.app:app", "--port", "8080", "--host", "0.0.0.0"]
 
-FROM build as celery
+FROM build AS celery
 
 CMD ["celery", "-A", "worker.tasks", "worker", "--loglevel=INFO", "-E"]

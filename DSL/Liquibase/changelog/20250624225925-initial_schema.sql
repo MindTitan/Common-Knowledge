@@ -37,6 +37,7 @@ CREATE TABLE source (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     last_scraped_at TIMESTAMP WITH TIME ZONE,
+    next_scrapping_at TIMESTAMP WITH TIME ZONE DEFAULT NULL,
     is_deleted BOOLEAN DEFAULT FALSE,
     created_by TEXT,
     type source_type NOT NULL,

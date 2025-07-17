@@ -83,7 +83,7 @@ class TriggerCleaningPipeline:
             return item
 
         requests.post(
-            f"{spider.settings.get('RUUTER_PRIVATE')}/ckb/pipeline/clean-file",
+            f"{spider.settings.get('RUUTER_PRIVATE')}/ckb/pipeline/clean-scraped-file",
             json={
                 'file_path': item.file_path,
                 'meta_data_path': item.metadata_path,
