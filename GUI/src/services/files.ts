@@ -31,9 +31,10 @@ export interface ScrapedFilesListParams {
   page?: number;
   pageSize?: number;
   sorting?: string;
+  search?: string; // Add search parameter
 }
 
-// Get all scraped files with optional filtering
+// Get all scraped files with optional filtering and search
 export const getScrapedFiles = async (
   params: ScrapedFilesListParams = {}
 ): Promise<ScrapedFilesListResponse> => {
@@ -44,6 +45,7 @@ export const getScrapedFiles = async (
       page: params.page || 1,
       pageSize: params.pageSize || 10,
       sorting: params.sorting || 'last_scraped_at desc',
+      search: params.search, // Include search parameter
     },
   });
 

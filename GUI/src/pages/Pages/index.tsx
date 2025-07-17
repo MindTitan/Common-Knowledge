@@ -64,11 +64,37 @@ const ScrapedFiles: FC = () => {
   const [formData, setFormData] = useState<FormData>({
     search: '',
   });
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Table state for server-side pagination and sorting
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
+  });
+
+  // Handle search input change
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({ search: e.target.value });
+  };
+
+  // Handle search button click
+  const handleSearchSubmit = () => {
+    setSearchQuery(formData.search);
+    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
+  };
+
+  // Handle Enter key in search input
+  const handleSearchKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleSearchSubmit();
+    }
+  };
+
+  // Fetch source data for header
+  const { data: sourceData } = useQuery({
+    queryKey: ['source', sourceId],
+    queryFn: () => getSource(sourceId!),
+    enabled: !!sourceId,
   });
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
@@ -100,16 +126,10 @@ const ScrapedFiles: FC = () => {
       page: pagination.pageIndex + 1,
       pageSize: pagination.pageSize,
       sorting: getSortingParam(sorting),
+      search: searchQuery || undefined, // Only include search if it's not empty
     }),
-    [sourceId, pagination.pageIndex, pagination.pageSize, sorting]
+    [sourceId, pagination.pageIndex, pagination.pageSize, sorting, searchQuery]
   );
-
-  // Fetch source data for header
-  const { data: sourceData } = useQuery({
-    queryKey: ['source', sourceId],
-    queryFn: () => getSource(sourceId!),
-    enabled: !!sourceId,
-  });
 
   // Fetch scraped files data
   const {
@@ -493,9 +513,17 @@ const ScrapedFiles: FC = () => {
                 label={t('knowledgeBase.searchWithinListedSources')}
                 name="search"
                 value={formData.search}
-                onChange={(e) => setFormData({ search: e.target.value })}
+                handleSearchChange
+                onChange={handleSearchChange}
+                onKeyPress={handleSearchKeyPress}
               />
-              <Button appearance="primary">{t('global.search')}</Button>
+              <Button
+                appearance="primary"
+                onClick={handleSearchSubmit}
+                disabled={isLoading}
+              >
+                {t('global.search')}
+              </Button>
             </Track>
           }
         >
