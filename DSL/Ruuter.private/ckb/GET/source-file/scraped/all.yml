@@ -1,7 +1,7 @@
 declaration:
   call: declare
   version: 0.1
-  description: "List all scraped source files with pagination and sorting"
+  description: "List all scraped source files with pagination, sorting, and search"
   method: get
   accepts: json
   returns: json
@@ -20,6 +20,9 @@ declaration:
       - field: sorting
         type: string
         description: "Sorting criteria (url asc/desc, page_title asc/desc, excluded asc/desc, status asc/desc, last_scraped_at asc/desc)"
+      - field: search
+        type: string
+        description: "Search query string (optional)"
 
 extractRequestData:
   assign:
@@ -27,6 +30,37 @@ extractRequestData:
     page: "${incoming.params.page ?? 1}"
     page_size: "${incoming.params.pageSize ?? 10}"
     sorting: "${incoming.params.sorting ?? 'last_scraped_at desc'}"
+    search_query: "${incoming.params.search}"
+
+checkSearchRequired:
+  switch:
+    - condition: ${!!search_query}
+      next: performSearch
+  next: getScrapedSourceFiles
+
+performSearch:
+  call: http.get
+  args:
+    url: "[#CKB_SEARCH]/search/${source_id}"
+    query:
+      q: ${search_query}
+      page: ${page}
+      size: ${page_size}
+      onlyIds: true
+  result: searchResult
+
+getSourceFilesByIds:
+  call: http.get
+  args:
+    url: "[#CKB_RESQL]/source_file/list_scraped_source_files_by_ids"
+    query:
+      source_file_ids: ${searchResult.response.body.sourceFileIds?.join(',') ?? ''}
+      page: ${page}
+      page_size: ${page_size}
+      sorting: ${sorting}
+      total_count: ${searchResult.response.body.total}
+  result: res
+  next: returnSuccess
 
 getScrapedSourceFiles:
   call: http.get
