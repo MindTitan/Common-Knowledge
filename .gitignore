@@ -8,7 +8,7 @@ node_modules
 .vscode
 exported-data
 .env
-
+/search-data
 *.pyc
 *.pyo
 *.pyd

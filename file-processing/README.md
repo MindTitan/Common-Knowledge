@@ -5,7 +5,6 @@ A FastAPI application for uploading files to blob storage with background task p
 ## Features
 
 - File upload to S3 with background task processing
-- Task status tracking in PostgreSQL with SQLAlchemy ORM
 - Signed download URL generation
 - Provider-agnostic blob storage interface
 - Modular architecture with proper separation of concerns
@@ -19,18 +18,13 @@ file-processing/
 │   ├── main.py                 # FastAPI app instance and startup
 │   │   ├── __init__.py
 │   │   ├── config.py           # Settings/configuration
-│   │   ├── database.py         # Database connection setup
 │   │   └── security.py         # Auth/JWT utilities
 │   ├── api/
 │   │   ├── __init__.py
-│   │   ├── deps.py             # Common dependencies
 │   │   ├── api.py              # Main API router
 │   │   ├── upload.py           # Upload endpoints
 │   │   ├── tasks.py            # Task status endpoints
 │   │   └── download.py         # Download endpoints
-│   ├── models/
-│   │   ├── __init__.py
-│   │   └── upload_task.py      # SQLAlchemy models
 │   ├── schemas/
 │   │   ├── __init__.py
 │   │   └── upload_task.py      # Pydantic models for requests/responses
@@ -43,67 +37,27 @@ file-processing/
 │   │   └── __init__.py
 │   └── tests/
 │       └── __init__.py
-├── alembic/                    # Database migrations
-│   ├── versions/
-│   │   └── 0001_create_upload_tasks_table.py
-│   ├── env.py
-│   └── script.py.mako
 ├── requirements.txt
-├── alembic.ini
 └── README.md
 ```
 
 ## Environment Variables
 
-- `DB_URI`: PostgreSQL connection string (e.g., postgresql://user:pass@localhost/dbname)
 - `AWS_ACCESS_KEY_ID`: AWS access key
 - `AWS_SECRET_ACCESS_KEY`: AWS secret key
 - `AWS_REGION`: AWS region (default: us-east-1)
 - `S3_BUCKET_NAME`: S3 bucket name
 - `S3_PRESIGNED_URL_EXPIRATION`: URL expiration time in seconds (default: 3600)
-- `SOURCE_PATH`: Source directory path (default: /source)
-
-## Database Setup
-
-The application uses SQLAlchemy ORM with PostgreSQL. The database schema is managed through Alembic migrations.
-
-### Running Migrations
-
-```bash
-# Run migrations
-alembic upgrade head
-
-# Create a new migration
-alembic revision --autogenerate -m "description"
-
-# Rollback migration
-alembic downgrade -1
-```
-
-### Database Schema
-
-The `upload_tasks` table is automatically created with the following schema:
-
-```sql
-CREATE TABLE upload_tasks (
-    task_id VARCHAR(36) PRIMARY KEY,
-    status taskstatus NOT NULL,
-    source_file_path TEXT NOT NULL,
-    blob_storage_path TEXT,
-    error_message TEXT,
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()
-);
-
-CREATE TYPE taskstatus AS ENUM ('pending', 'processing', 'completed', 'failed');
-```
+- `SOURCE_PATH`: Source directory path (default: /source).
 
 ## API Endpoints
 
 ### POST /api/v1/upload
+
 Upload a file to blob storage.
 
 **Request Body:**
+
 ```json
 {
   "source_file_path": "path/to/file.txt"
@@ -111,6 +65,7 @@ Upload a file to blob storage.
 ```
 
 **Response:**
+
 ```json
 {
   "task_id": "uuid",
@@ -119,9 +74,11 @@ Upload a file to blob storage.
 ```
 
 ### GET /api/v1/tasks/{task_id}
+
 Get the status of an upload task.
 
 **Response:**
+
 ```json
 {
   "task_id": "uuid",
@@ -134,9 +91,11 @@ Get the status of an upload task.
 ```
 
 ### POST /api/v1/download
+
 Generate a signed download URL for a file.
 
 **Request Body:**
+
 ```json
 {
   "blob_storage_path": "uploads/uuid/file.txt"
@@ -144,6 +103,7 @@ Generate a signed download URL for a file.
 ```
 
 **Response:**
+
 ```json
 {
   "download_url": "https://s3.amazonaws.com/...",
@@ -159,8 +119,6 @@ Generate a signed download URL for a file.
 # Install dependencies
 pip install -r requirements.txt
 
-# Run migrations
-alembic upgrade head
 
 # Start the application
 uvicorn app.main:app --host 0.0.0.0 --port 8888 --reload
@@ -185,16 +143,7 @@ docker run -p 8888:8888 \
 
 ### Code Structure
 
-- **Models**: SQLAlchemy ORM models in `app/models/`
 - **Schemas**: Pydantic models for API requests/responses in `app/schemas/`
 - **Services**: Business logic in `app/services/`
 - **API**: FastAPI routes in `app/api/`
 - **Core**: Configuration and database setup in `app/core/`
-
-### Adding New Features
-
-1. Create SQLAlchemy model in `app/models/`
-2. Create Pydantic schemas in `app/schemas/`
-3. Add business logic in `app/services/`
-4. Create API endpoints in `app/api/`
-5. Generate and run Alembic migration if needed 

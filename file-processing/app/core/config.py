@@ -1,9 +1,8 @@
 from pydantic_settings import BaseSettings
-from pydantic import PostgresDsn, DirectoryPath
+from pydantic import DirectoryPath
 
 
 class Settings(BaseSettings):
-    db_uri: PostgresDsn
     source_path: DirectoryPath = '/source'
     aws_access_key_id: str
     aws_secret_access_key: str
