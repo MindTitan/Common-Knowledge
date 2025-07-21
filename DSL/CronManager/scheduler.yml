@@ -1,0 +1,11 @@
+trigger_scheduler:
+  trigger: "0 */5 * * * ?"
+  type: http
+  method: GET
+  url: http://ruuter-private:8089/ckb/pipeline/scheduler-check-for-unscheduled-records
+
+#trigger_pipeline_for_scheduled_entities:
+#  trigger: "*/5 * * * * ?"
+#  type: http
+#  method: POST
+#  url: http://ruuter-private:8089/pipeline/trigger-pipeline-for-sceduled-entities

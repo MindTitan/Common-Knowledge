@@ -54,7 +54,7 @@ services:
     depends_on:
       - database
     environment:
-      - server.port=8088
+      - server.port=8087
       - sqlms.datasources.[0].name=byk
       # - sqlms.datasources.[0].jdbcUrl=jdbc:postgresql://database:5432/users_db // For Local Use
       - sqlms.datasources.[0].jdbcUrl=jdbc:postgresql://171.22.247.13:5433/byk
@@ -62,9 +62,9 @@ services:
       - sqlms.datasources.[0].password=2nH09n6Gly
       - logging.level.org.springframework.boot=INFO
     ports:
-      - 8087:8088
+      - 8087:8087
     volumes:
-      - ./DSL/Resql:/workspace/app/templates
+      - ./DSL/Resql:/DSL
     networks:
       - bykstack
 
@@ -83,7 +83,7 @@ services:
     ports:
       - 8090:8090
     volumes:
-      - ./DSL/Resql:/workspace/app/templates
+      - ./DSL/Resql:/DSL
     networks:
       - bykstack
 
@@ -113,20 +113,20 @@ services:
     container_name: ruuter-private
     image: ruuter
     environment:
-      - application.cors.allowedOrigins=http://localhost:8082,http://localhost:3001,http://localhost:3003
+      - application.cors.allowedOrigins=http://localhost:8089
       - application.httpCodesAllowList=200,201,202,400,401,403,500
       - application.internalRequests.allowedIPs=127.0.0.1
       - application.logging.displayRequestContent=true
       - application.logging.displayResponseContent=true
       - application.logging.printStackTrace=true
       - application.internalRequests.disabled=true
-      - server.port=8080
+      - server.port=8089
       - application.externalAuthAllowed=
     volumes:
       - ./DSL/Ruuter.private:/DSL
       - ./constants.ini:/app/constants.ini
     ports:
-      - 8088:8080
+      - 8089:8089
     networks:
       - bykstack
     cpus: "0.5"
@@ -147,6 +147,25 @@ services:
     networks:
       - bykstack
 
+  data-export:
+    container_name: data-export
+    build:
+      context: ./data-export
+      dockerfile: Dockerfile
+    ports:
+      - 8888:8888
+    depends_on:
+      - database
+    environment:
+      - DB_URI=postgresql://byk:01234@database:5432/services_db
+    command: python debug.py
+    volumes:
+      - ./DSL/Export:/DSL
+      - ./data-export:/app
+      - ./exported-data:/exported-data
+    networks:
+      - bykstack
+
   authentication-layer:
     container_name: authentication-layer
     image: authentication-layer
@@ -161,10 +180,10 @@ services:
       - NODE_ENV=development
       - BASE_URL=http://localhost:8080/ckb
       - REACT_APP_RUUTER_API_URL=http://localhost:8086/ckb
-      - REACT_APP_RUUTER_PRIVATE_API_URL=http://localhost:8088/ckb
+      - REACT_APP_RUUTER_PRIVATE_API_URL=http://localhost:8089/ckb
       - REACT_APP_CUSTOMER_SERVICE_LOGIN=http://localhost:3004/et/dev-auth
       - REACT_APP_NOTIFICATION_NODE_URL=http://localhost:4040
-      - REACT_APP_CSP=upgrade-insecure-requests; default-src 'self'; font-src 'self' data:; img-src * data:; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; object-src 'none'; connect-src 'self' http://localhost:8086 http://localhost:8088 http://localhost:8085 http://localhost:4040 https://admin.dev.buerokratt.ee/chat/menu.json;
+      - REACT_APP_CSP=upgrade-insecure-requests; default-src 'self'; font-src 'self' data:; img-src * data:; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; object-src 'none'; connect-src 'self' http://localhost:8086 http://localhost:8089 http://localhost:8085 http://localhost:4040 https://admin.dev.buerokratt.ee/chat/menu.json;
       - DEBUG_ENABLED=true
       - CHOKIDAR_USEPOLLING=true
       - PORT=3001
@@ -274,6 +293,109 @@ services:
       - ./tim-db:/var/lib/postgresql/data
     ports:
       - 9876:5432
+    networks:
+      - bykstack
+
+  scrapper-server:
+    container_name: scrapper-server
+    build:
+      context: ./scrapper
+      target: server
+    ports:
+      - 8080:8080
+    volumes:
+      - ./scrapped-data:/scrapped-data
+      - ./scrapper:/app
+    environment:
+      - RUUTER_PRIVATE=http://ruuter-private:8089
+      - BROKER_URL=pyamqp://admin:admin@rabbit-scrapper/scrapper
+    depends_on:
+      - rabbit-scrapper
+    networks:
+      - bykstack
+
+  scrapper-celery:
+    container_name: scrapper-celery
+    build:
+      context: ./scrapper
+      target: celery
+    volumes:
+      - ./scrapped-data:/scrapped-data
+      - ./scrapper:/app
+    environment:
+      - RUUTER_PRIVATE=http://ruuter-private:8089
+      - BROKER_URL=pyamqp://admin:admin@rabbit-scrapper/scrapper
+    depends_on:
+      - rabbit-scrapper
+    networks:
+      - bykstack
+
+  cleaning-server:
+    container_name: cleaning-server
+    build:
+      context: ./cleaning
+      target: server
+    ports:
+      - 8123:8123
+    volumes:
+      - ./scrapped-data:/scrapped-data
+      - ./cleaning:/app
+    environment:
+      - RUUTER_PRIVATE=http://ruuter-private:8089
+      - BROKER_URL=pyamqp://admin:admin@rabbit-cleaning/cleaning
+    depends_on:
+      - rabbit-cleaning
+    networks:
+      - bykstack
+
+  cleaning-celery:
+    container_name: cleaning-celery
+    build:
+      context: ./cleaning
+      target: celery
+    volumes:
+      - ./scrapped-data:/scrapped-data
+      - ./cleaning:/app
+    environment:
+      - RUUTER_PRIVATE=http://ruuter-private:8089
+      - BROKER_URL=pyamqp://admin:admin@rabbit-cleaning/cleaning
+    depends_on:
+      - rabbit-cleaning
+    networks:
+      - bykstack
+
+  rabbit-cleaning:
+    image: rabbitmq:4-management
+    container_name: rabbit-cleaning
+    environment:
+      - RABBITMQ_DEFAULT_USER=admin
+      - RABBITMQ_DEFAULT_PASS=admin
+      - RABBITMQ_DEFAULT_VHOST=cleaning
+    ports:
+      - "5692:5672"
+      - "15692:15672"
+    networks:
+      - bykstack
+
+  rabbit-scrapper:
+    image: rabbitmq:4-management
+    container_name: rabbit-scrapper
+    environment:
+      - RABBITMQ_DEFAULT_USER=admin
+      - RABBITMQ_DEFAULT_PASS=admin
+      - RABBITMQ_DEFAULT_VHOST=scrapper
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - bykstack
+
+  scheduler:
+    container_name: scheduler
+    build:
+      context: ./scheduler
+    ports:
+      - "8124:8124"
     networks:
       - bykstack
 
