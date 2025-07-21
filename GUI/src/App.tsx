@@ -7,10 +7,9 @@ import useStore from 'store';
 import { UserInfo } from 'types/userInfo';
 
 import AgencyList from 'pages/Agency';
-import Pages from 'pages/Pages';
+import Files from 'pages/Files';
 import Agency from 'pages/Agency/Agency';
 import Settings from 'pages/Settings';
-import Files from 'pages/Files';
 import Reports from 'pages/Reports';
 import Report from 'pages/Reports/Report';
 import AddAgency from 'pages/Agency/SaveAgency';
@@ -37,8 +36,8 @@ const App: FC = () => {
         <Route path="/agency" element={<AgencyList />} />
         <Route path="/agency/add" element={<AddAgency />} />
         <Route path="/agency/:id" element={<Agency />} />
-        <Route path="/source/:id/files" element={<Pages />} />
-        <Route path="/files" element={<Files />} />
+        {/* Unified files route */}
+        <Route path="/source/:id/files" element={<Files />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/reports/:id" element={<Report />} />
         <Route path="/source/:id/schedule" element={<Settings />} />

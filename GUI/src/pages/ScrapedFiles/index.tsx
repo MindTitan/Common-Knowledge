@@ -34,23 +34,17 @@ import {
   updateFileExclusion,
   refreshScrapedFile,
   deleteFile,
-  getFileRawContent,
-  getFileCleanedContent,
-  getFileEditedContent,
-  updateFileEditedContent,
+  downloadFile,
+  fetchFileData,
+  updateFileEditedContentWithUpload,
   ScrapedFile,
   ScrapedFilesListParams,
+  EditorState,
 } from 'services/files';
 import { getSource } from 'services/sources';
 
 interface FormData {
   search: string;
-}
-
-interface EditorState {
-  type: 'raw' | 'cleaned' | 'edited';
-  fileId: string;
-  content: string;
 }
 
 const ScrapedFiles: FC = () => {
@@ -207,18 +201,30 @@ const ScrapedFiles: FC = () => {
 
   // Save edited content mutation
   const saveContentMutation = useMutation({
-    mutationFn: ({ fileId, content }: { fileId: string; content: string }) =>
-      updateFileEditedContent(fileId, content),
+    mutationFn: ({ content }: { content: string }) => {
+      if (!editorState?.file) {
+        throw new Error('No file available for saving');
+      }
+      setEditorState({ ...editorState, saving: true });
+      const editedFilePath = `${sourceData?.agencyBaseId}/${sourceData?.baseId}/${editorState.file.baseId}/edited.txt`;
+      return updateFileEditedContentWithUpload(
+        editorState.file,
+        content,
+        editedFilePath
+      );
+    },
     onSuccess: () => {
       toast.open({
         type: 'success',
         title: t('global.notification'),
         message: t('knowledgeBase.contentSaved'),
       });
-      setEditorState(null);
+
       queryClient.invalidateQueries(['scrapedFiles']);
+      setEditorState(null);
     },
     onError: (error: any) => {
+      setEditorState(null);
       toast.open({
         type: 'error',
         title: t('global.notificationError'),
@@ -248,25 +254,35 @@ const ScrapedFiles: FC = () => {
     type: 'raw' | 'cleaned' | 'edited'
   ) => {
     try {
-      let content = '';
-      switch (type) {
-        case 'raw':
-          content = await getFileRawContent(file.id);
-          break;
-        case 'cleaned':
-          content = await getFileCleanedContent(file.id);
-          break;
-        case 'edited':
-          content = await getFileEditedContent(file.id);
-          break;
+      // If it's raw content, download the file instead of viewing
+      if (type === 'raw') {
+        await handleDownloadFile(file);
+        return;
       }
 
       setEditorState({
         type,
-        fileId: file.id,
+        file,
+        content: '',
+        loading: true,
+        sourceType: 'scraped',
+      });
+
+      // For cleaned and edited content, continue with existing logic
+      const path =
+        type === 'cleaned' ? file.cleanedDataUrl : file.editedDataUrl;
+      if (!path) return;
+      const content = await fetchFileData(path);
+
+      setEditorState({
+        type,
+        file,
         content,
+        loading: false,
+        sourceType: 'scraped',
       });
     } catch (error) {
+      setEditorState(null);
       toast.open({
         type: 'error',
         title: t('global.notificationError'),
@@ -275,13 +291,70 @@ const ScrapedFiles: FC = () => {
     }
   };
 
+  const handleEditorStateChange = async (newState: EditorState) => {
+    if (!newState.file) return;
+
+    try {
+      // If it's raw content, download the file instead of viewing
+      if (newState.type === 'raw') {
+        await handleDownloadFile(newState.file as ScrapedFile);
+        return;
+      }
+
+      setEditorState({
+        ...newState,
+        loading: true,
+        content: '',
+      });
+
+      // Fetch content based on type
+      let content = '';
+      const uploadedFile = newState.file as ScrapedFile;
+
+      const editedPath =
+        newState.type === 'edited'
+          ? uploadedFile.editedDataUrl
+          : uploadedFile.cleanedDataUrl;
+      if (editedPath) {
+        content = await fetchFileData(editedPath);
+      }
+
+      setEditorState({
+        ...newState,
+        content,
+        loading: false,
+      });
+    } catch (error) {
+      setEditorState({
+        ...newState,
+        loading: false,
+      });
+      toast.open({
+        type: 'error',
+        title: t('global.notificationError'),
+        message: t('knowledgeBase.contentLoadError'),
+      });
+    }
+  };
+
+  const handleDownloadFile = async (file: ScrapedFile) => {
+    try {
+      // Get the download URL from backend
+      if (!file.originalDataUrl) return;
+      await downloadFile(file.originalDataUrl, file.fileName);
+    } catch (error: any) {
+      toast.open({
+        type: 'error',
+        title: t('global.notificationError'),
+        message: error.message || t('knowledgeBase.downloadError'),
+      });
+    }
+  };
+
   const handleSaveContent = (content: string) => {
     if (!editorState) return;
 
-    saveContentMutation.mutate({
-      fileId: editorState.fileId,
-      content,
-    });
+    saveContentMutation.mutate({ content });
   };
 
   const handlePaginationChange = (newPagination: PaginationState) => {
@@ -362,7 +435,7 @@ const ScrapedFiles: FC = () => {
             {t('knowledgeBase.refresh')}
           </Button>
           <Button
-            disabled={row.original.status === 'cleaning'}
+            disabled={!row.original.originalDataUrl}
             appearance="text"
             className="agencies__action-btn"
             size="s"
@@ -372,7 +445,9 @@ const ScrapedFiles: FC = () => {
             {t('knowledgeBase.raw')}
           </Button>
           <Button
-            disabled={row.original.status === 'cleaning'}
+            disabled={
+              row.original.status === 'cleaning' || !row.original.cleanedDataUrl
+            }
             appearance="text"
             className="agencies__action-btn"
             size="s"
@@ -383,7 +458,9 @@ const ScrapedFiles: FC = () => {
           </Button>
           <Button
             appearance="text"
-            disabled={row.original.status === 'cleaning'}
+            disabled={
+              row.original.status === 'cleaning' || !row.original.editedDataUrl
+            }
             className="agencies__action-btn"
             size="s"
             onClick={() => handleViewContent(row.original, 'edited')}
@@ -431,7 +508,7 @@ const ScrapedFiles: FC = () => {
       header: t('global.status'),
       cell: ({ row }) => {
         const color =
-          row.original.status === 'done'
+          row.original.status === 'finished'
             ? '#266B42'
             : row.original.status === 'cleaning'
             ? '#94690D'
@@ -477,14 +554,11 @@ const ScrapedFiles: FC = () => {
       {editorState && (
         <Dialog size="fullscreen" onClose={() => setEditorState(null)}>
           <Editor
-            changeEditorState={() => {}}
-            editorState={editorState.type}
-            content={editorState.content}
-            readonly={editorState.type !== 'edited'}
+            changeEditorState={handleEditorStateChange}
+            editorState={editorState}
+            readonly={false}
             onCancel={() => setEditorState(null)}
-            onSave={
-              editorState.type === 'edited' ? handleSaveContent : undefined
-            }
+            onSave={handleSaveContent}
           />
         </Dialog>
       )}

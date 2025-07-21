@@ -1,16 +1,38 @@
 import { apiDev } from './api';
+import { getUploadUrls, uploadContentToS3 } from './s3';
 
 export interface ScrapedFile {
   id: string;
   baseId: string;
+  fileName: string;
   url: string;
   pageTitle: string;
   isExcluded: boolean;
-  status: 'done' | 'cleaning' | 'notFound' | 'error';
+  status: 'scraping' | 'cleaning' | 'finished' | 'not_found' | 'failed';
+  originallyScraped: string;
   lastScrapedAt: string;
   sourceId: string;
   createdAt: string;
   updatedAt: string;
+  originalDataUrl?: string;
+  cleanedDataUrl?: string;
+  editedDataUrl?: string;
+}
+
+export interface UploadedFile {
+  id: string;
+  baseId: string;
+  fileName: string;
+  subsector?: string;
+  isExcluded: boolean;
+  status: 'cleaning' | 'finished' | 'failed';
+  lastScrapedAt: string;
+  sourceId: string;
+  createdAt: string;
+  updatedAt: string;
+  originalDataUrl?: string;
+  cleanedDataUrl?: string;
+  editedDataUrl?: string;
 }
 
 export interface ApiResponse {
@@ -25,33 +47,61 @@ export interface ScrapedFilesListResponse {
   totalPages: number;
 }
 
+export interface UploadedFilesListResponse {
+  data: UploadedFile[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
 export interface ScrapedFilesListParams {
   sourceId?: string;
   isExcluded?: boolean;
   page?: number;
   pageSize?: number;
   sorting?: string;
-  search?: string; // Add search parameter
+  search?: string;
 }
 
-// Get all scraped files with optional filtering and search
+export interface UploadedFilesListParams {
+  sourceId?: string;
+  isExcluded?: boolean;
+  page?: number;
+  pageSize?: number;
+  sorting?: string;
+  search?: string;
+}
+
+export interface EditorState {
+  type: 'raw' | 'cleaned' | 'edited';
+  file?: UploadedFile | ScrapedFile;
+  fileId?: string;
+  content: string;
+  sourceType: 'uploaded' | 'scraped';
+  loading: boolean;
+  saving?: boolean;
+}
+
+/**
+ * Get all scraped files with optional filtering and search
+ */
 export const getScrapedFiles = async (
   params: ScrapedFilesListParams = {}
 ): Promise<ScrapedFilesListResponse> => {
-  const response = await apiDev.get(`/source-file/scraped/all`, {
+  const response = await apiDev.get(`/source-file/all`, {
     params: {
       sourceId: params.sourceId,
+      type: 'scraped_file',
       isExcluded: params.isExcluded,
       page: params.page || 1,
       pageSize: params.pageSize || 10,
       sorting: params.sorting || 'last_scraped_at desc',
-      search: params.search, // Include search parameter
+      search: params.search,
     },
   });
 
   const apiResponse: ApiResponse = response.data;
-
-  // Transform the API response to match our expected structure
   const files = apiResponse.response || [];
   const firstItem = files[0];
 
@@ -64,11 +114,44 @@ export const getScrapedFiles = async (
   };
 };
 
-// Update exclusion status of a scraped file
+/**
+ * Get all uploaded files with optional filtering and search
+ */
+export const getUploadedFiles = async (
+  params: UploadedFilesListParams = {}
+): Promise<UploadedFilesListResponse> => {
+  const response = await apiDev.get(`/source-file/all`, {
+    params: {
+      sourceId: params.sourceId,
+      type: 'uploaded_file',
+      isExcluded: params.isExcluded,
+      page: params.page || 1,
+      pageSize: params.pageSize || 10,
+      sorting: params.sorting || 'last_scraped_at desc',
+      search: params.search,
+    },
+  });
+
+  const apiResponse: ApiResponse = response.data;
+  const files = apiResponse.response || [];
+  const firstItem = files[0];
+
+  return {
+    data: files,
+    total: firstItem?.total || files.length,
+    page: parseInt(firstItem?.page || '1'),
+    pageSize: params.pageSize || 10,
+    totalPages: firstItem?.totalPages || 1,
+  };
+};
+
+/**
+ * Update exclusion status of a file
+ */
 export const updateFileExclusion = async (
   fileId: string,
   isExcluded: boolean
-): Promise<ScrapedFile> => {
+): Promise<ScrapedFile | UploadedFile> => {
   const response = await apiDev.post('/source-file/exclude', {
     baseId: fileId,
     excluded: isExcluded,
@@ -78,29 +161,69 @@ export const updateFileExclusion = async (
   return apiResponse.response?.[0] || apiResponse.response;
 };
 
-// Refresh/re-scrape a specific file
+/**
+ * Refresh/re-scrape a specific file
+ */
 export const refreshScrapedFile = async (fileId: string): Promise<void> => {
   await apiDev.post('/source-file/refresh', {
     fileId: fileId,
   });
 };
 
-// Delete a file
+/**
+ * Delete a file
+ */
 export const deleteFile = async (fileId: string): Promise<void> => {
   await apiDev.post('/source-file/remove', {
     baseId: fileId,
   });
 };
 
-// Get raw content of a scraped file
-export const getFileRawContent = async (fileId: string): Promise<string> => {
-  const response = await apiDev.get('/source-file/content/raw', {
-    params: { fileId },
+/**
+ * Get download URL for a file
+ */
+export const getFileDownloadUrl = async (
+  fileId: string
+): Promise<{ downloadUrl: string; expiresAt: string }> => {
+  const response = await apiDev.get('/source-file/get-download-url', {
+    params: { path: fileId },
   });
   return response.data.response;
 };
 
-// Get cleaned content of a scraped file
+/**
+ * Fetch file content from a path
+ */
+export const fetchFileData = async (path: string): Promise<string> => {
+  const { downloadUrl } = await getFileDownloadUrl(path);
+  const response = await fetch(downloadUrl);
+  return await response.text();
+};
+
+/**
+ * Download a file to user's device
+ */
+export const downloadFile = async (
+  path: string,
+  fileName: string
+): Promise<void> => {
+  const { downloadUrl } = await getFileDownloadUrl(path);
+
+  // Create a temporary anchor element and trigger download
+  const link = document.createElement('a');
+  link.href = downloadUrl;
+  link.download = fileName;
+  link.target = '_blank'; // Open in new tab as fallback
+
+  // Append to body, click, and remove
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
+/**
+ * Get cleaned content of a file
+ */
 export const getFileCleanedContent = async (
   fileId: string
 ): Promise<string> => {
@@ -110,7 +233,9 @@ export const getFileCleanedContent = async (
   return response.data.response;
 };
 
-// Get edited content of a scraped file
+/**
+ * Get edited content of a file
+ */
 export const getFileEditedContent = async (fileId: string): Promise<string> => {
   const response = await apiDev.get('/source-file/content/edited', {
     params: { fileId },
@@ -118,7 +243,9 @@ export const getFileEditedContent = async (fileId: string): Promise<string> => {
   return response.data.response;
 };
 
-// Update edited content of a scraped file
+/**
+ * Legacy method: Update edited content via API (kept for backward compatibility)
+ */
 export const updateFileEditedContent = async (
   fileId: string,
   content: string
@@ -127,4 +254,63 @@ export const updateFileEditedContent = async (
     fileId: fileId,
     content: content,
   });
+};
+
+export const updateFileEditedDataUrl = async (
+  baseId: string,
+  editedDataUrl: string
+): Promise<void> => {
+  const response = await apiDev.post('/source-file/edit-file', {
+    base_id: baseId,
+    edited_data_url: editedDataUrl,
+  });
+
+  const apiResponse = response.data;
+
+  // Check if update was successful
+  if (response.status >= 400 || apiResponse.error) {
+    throw new Error(
+      apiResponse.error?.message || 'Failed to update edited data URL'
+    );
+  }
+};
+
+/**
+ * Update edited content using S3 direct upload
+ */
+export const updateFileEditedContentWithUpload = async (
+  file: ScrapedFile | UploadedFile,
+  content: string,
+  path: string
+): Promise<void> => {
+  try {
+    // Get upload URL for the target path - Updated to match backend format
+    const uploadResponse = await getUploadUrls({
+      files: [
+        {
+          path,
+          content_type: 'text/plain',
+        },
+      ],
+      expires_in: 3600,
+    });
+
+    if (
+      !uploadResponse.upload_urls ||
+      uploadResponse.upload_urls.length === 0
+    ) {
+      throw new Error('No upload URL received');
+    }
+
+    const uploadUrl = uploadResponse.upload_urls[0].upload_url;
+
+    // Upload content directly to S3
+    await uploadContentToS3(uploadUrl, content, 'text/plain');
+
+    // Update database with the edited data URL
+    await updateFileEditedDataUrl(file.baseId, path);
+  } catch (error) {
+    console.error('Error updating file with upload:', error);
+    throw error;
+  }
 };

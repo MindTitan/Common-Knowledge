@@ -543,7 +543,8 @@
     "third": "kolmas",
     "fourth": "neljas",
     "last": "viimane",
-    "cleanedData": "Puhastatud/töödeldud andmed",
+    "cleanedData": "Puhastatud andmed",
+    "editedData": "Redigeeritud andmed",
     "originallyScraped": "Algselt kogutud",
     "cleaned": "Puhastatud",
     "urls": "URLid",
@@ -557,7 +558,7 @@
     "files": "Files",
     "editSource": "Redigeeri allikat",
     "deleteSource": "Kustuta allikas",
-    "uploadFile": "Laadi fail üles",
+    "uploadFiles": "Laadi failid üles",
     "cleaning": "Puhastamine",
     "notFound": "Ei leitud",
     "discard": "Visake ära",
@@ -567,7 +568,10 @@
     "agencyLoadError": "Agentuuri laadimine ebaõnnestus",
     "agencyUpdated": "Agentuuri värskendamine õnnestus",
     "agencyUpdateError": "Agentuuri värskendamine ebaõnnestus",
-    "scrapeSettings": "Kraapimise ajakava"
+    "scrapeSettings": "Kraapimise ajakava",
+    "downloadError": "Faili allalaadimine ebaõnnestus",
+    "contentLoadError": "Sisu laadimine ebaõnnestus",
+    "contentSaved": "Fail salvestati edukalt"
   },
   "urlWizard": {
     "title": "Uus URL",
@@ -603,7 +607,8 @@
     "fileExceedsLimit": "Failisuurus ületab maksimaalset piiri",
     "uploaded": "üles laaditud.",
     "overwriteFile": "on juba süsteemis olemas. Faili ülekirjutamine kustutab andmed. Kas soovid faili üle kirjutada?",
-    "maxSizeAllowed": "Maksimaalne lubatud suurus:"
+    "maxSizeAllowed": "Maksimaalne lubatud suurus:",
+    "of": "kohta"
   },
   "reports": {
     "title": "Aruanded",

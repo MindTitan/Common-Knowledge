@@ -29,7 +29,10 @@ import { useToast } from 'hooks/useToast';
 import './Agency.scss';
 import './AgencyList.scss';
 import EditAgency from './SaveAgency';
-import type { FileItem } from 'components/FileUploader/FileUploader';
+import type {
+  FileItem,
+  UploadProgress,
+} from 'components/FileUploader/FileUploader';
 import { getAgency } from 'services/agencies';
 import {
   getSources,
@@ -41,6 +44,7 @@ import {
   refreshSource,
   Source,
   SourcesListParams,
+  CreateSourceFileRequest,
 } from 'services/sources';
 
 interface KnowledgeBaseFormData {
@@ -55,6 +59,12 @@ const Agency: FC = () => {
   const toast = useToast();
   const queryClient = useQueryClient();
   const { id: agencyBaseId } = useParams<{ id: string }>();
+  const [uploadProgress, setUploadProgress] = useState<UploadProgress>({
+    isUploading: false,
+    currentFile: 0,
+    totalFiles: 0,
+    currentFileName: '',
+  });
 
   const [uploadModal, setUploadModal] = useState(false);
   const [addUrlModal, setAddUrlModal] = useState(false);
@@ -125,18 +135,112 @@ const Agency: FC = () => {
 
   // File upload mutation
   const uploadMutation = useMutation({
-    mutationFn: createSourceFile,
+    mutationFn: async (data: CreateSourceFileRequest) => {
+      // Set initial upload state
+      setUploadProgress({
+        isUploading: true,
+        currentFile: 0,
+        totalFiles: data.files.length,
+        currentFileName: '',
+      });
+
+      return createSourceFile(
+        data,
+        (
+          fileIndex: number,
+          fileName: string,
+          status: 'uploading' | 'success'
+        ) => {
+          // Update overall progress - show which file is currently being uploaded
+          setUploadProgress((prev) => ({
+            ...prev,
+            currentFile:
+              status === 'uploading' ? fileIndex + 1 : prev.currentFile,
+            currentFileName:
+              status === 'uploading' ? fileName : prev.currentFileName,
+          }));
+
+          // Update individual file status in real-time
+          setFormData((prev) => ({
+            ...prev,
+            files: prev.files.map((file, index) => {
+              if (index === fileIndex) {
+                return {
+                  ...file,
+                  status: status as any,
+                };
+              }
+              return file;
+            }),
+          }));
+        }
+      );
+    },
+    onMutate: () => {
+      // Set all valid files to uploading status
+      setFormData((prev) => ({
+        ...prev,
+        files: prev.files.map((file) =>
+          file.status !== 'error'
+            ? { ...file, status: 'uploading' as const }
+            : file
+        ),
+      }));
+    },
     onSuccess: () => {
+      // Reset upload progress
+      setUploadProgress({
+        isUploading: false,
+        currentFile: 0,
+        totalFiles: 0,
+        currentFileName: '',
+      });
+
+      // All files should already be marked as success from the progress callback
+      // But ensure any remaining files are marked as success
+      setFormData((prev) => ({
+        ...prev,
+        files: prev.files.map((file) => ({
+          ...file,
+          status:
+            file.status === 'uploading' ? ('success' as const) : file.status,
+        })),
+      }));
+
       toast.open({
         type: 'success',
         title: t('global.notification'),
         message: t('knowledgeBase.uploadSuccess'),
       });
-      setUploadModal(false);
-      setFormData({ subsector: '', files: [] });
+
+      // Close modal after a short delay to show success state
+      setTimeout(() => {
+        setUploadModal(false);
+        setFormData({ subsector: '', files: [] });
+      }, 1000);
+
       queryClient.invalidateQueries(['sources']);
     },
     onError: (error: any) => {
+      // Reset upload progress
+      setUploadProgress({
+        isUploading: false,
+        currentFile: 0,
+        totalFiles: 0,
+        currentFileName: '',
+      });
+
+      // Set failed files to error status
+      setFormData((prev) => ({
+        ...prev,
+        files: prev.files.map((file) => ({
+          ...file,
+          status:
+            file.status === 'uploading' ? ('error' as const) : file.status,
+          message: file.status === 'uploading' ? error.message : file.message,
+        })),
+      }));
+
       toast.open({
         type: 'error',
         title: t('global.notificationError'),
@@ -256,7 +360,11 @@ const Agency: FC = () => {
       return;
     }
 
-    const files = formData.files.map((fileItem) => fileItem.file);
+    // Extract actual File objects from FileItem[]
+    const files = formData.files
+      .filter((fileItem) => fileItem.status !== 'error')
+      .map((fileItem) => fileItem.file);
+
     uploadMutation.mutate({
       agencyBaseId,
       subsector: formData.subsector,
@@ -480,7 +588,7 @@ const Agency: FC = () => {
                 }}
                 onClick={() => setUploadModal(true)}
               >
-                {t('knowledgeBase.uploadFile')}
+                {t('knowledgeBase.uploadFiles')}
               </Button>
               <Button appearance="primary" onClick={() => setAddUrlModal(true)}>
                 {t('knowledgeBase.addUrl')}
@@ -514,13 +622,14 @@ const Agency: FC = () => {
       {/* Upload Modal */}
       {uploadModal && (
         <Dialog
-          title={t('knowledgeBase.uploadFile')}
-          onClose={() => setUploadModal(false)}
+          title={t('knowledgeBase.uploadFiles')}
+          onClose={() => !uploadProgress.isUploading && setUploadModal(false)}
           footer={
             <Track gap={16} justify="end">
               <Button
                 appearance="secondary"
                 onClick={() => setUploadModal(false)}
+                disabled={uploadProgress.isUploading}
               >
                 {t('global.cancel')}
               </Button>
@@ -528,13 +637,14 @@ const Agency: FC = () => {
                 appearance="primary"
                 onClick={handleUpload}
                 disabled={
-                  uploadMutation.isLoading ||
+                  uploadProgress.isUploading ||
                   !formData.subsector ||
-                  formData.files.length === 0
+                  formData.files.length === 0 ||
+                  formData.files.every((file) => file.status === 'error')
                 }
               >
-                {uploadMutation.isLoading
-                  ? t('global.uploading')
+                {uploadProgress.isUploading
+                  ? t('fileUpload.uploading')
                   : t('knowledgeBase.upload')}
               </Button>
             </Track>
@@ -550,6 +660,7 @@ const Agency: FC = () => {
                 setFormData((prev) => ({ ...prev, subsector: e.target.value }))
               }
               required
+              disabled={uploadProgress.isUploading}
             />
             <FileUploader
               files={formData.files}
@@ -558,6 +669,7 @@ const Agency: FC = () => {
               maxFileSize={30 * 1024 * 1024} // 30MB
               acceptedTypes=".pdf,.doc,.docx,.txt,.html,.htm"
               multiple={true}
+              uploadProgress={uploadProgress} // Pass upload progress to FileUploader
             />
           </Track>
         </Dialog>

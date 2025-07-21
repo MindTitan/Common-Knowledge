@@ -1,4 +1,3 @@
-// services/agencies.ts
 import { apiDev } from './api';
 
 // Base Agency interface

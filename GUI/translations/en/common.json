@@ -543,7 +543,8 @@
     "third": "third",
     "fourth": "fourth",
     "last": "last",
-    "cleanedData": "Cleaned/etc data",
+    "cleanedData": "Cleaned data",
+    "editedData": "Edited data",
     "originallyScraped": "Originally scraped",
     "cleaned": "Cleaned",
     "addAgency": "Add Agency",
@@ -558,7 +559,7 @@
     "files": "Files",
     "editSource": "Edit Source",
     "deleteSource": "Delete Source",
-    "uploadFile": "Upload File",
+    "uploadFiles": "Upload Files",
     "cleaning": "Cleaning",
     "notFound": "Not Found",
     "discard": "Discard",
@@ -568,7 +569,10 @@
     "agencyLoadError": "Failed to load agency",
     "agencyUpdated": "Agency updated successfully",
     "agencyUpdateError": "Failed to update agency",
-    "scrapeSettings": "Scraping schedule"
+    "scrapeSettings": "Scraping schedule",
+    "downloadError": "Failed to download file",
+    "contentLoadError": "Failed to load content",
+    "contentSaved": "File saved successfully"
   },
  "fileUpload": {
     "title": "Upload file",
@@ -591,7 +595,8 @@
     "fileExceedsLimit": "File size exceeds the maximum limit",
     "uploaded": "uploaded.",
     "overwriteFile": "exists already in the system. Overwriting the file deletes the data. Do you want to overwrite the file?",
-    "maxSizeAllowed": "Maximum size allowed:"
+    "maxSizeAllowed": "Maximum size allowed:",
+    "of": "of"
   },
   "reports": {
     "title": "Reports",

@@ -1,5 +1,12 @@
-// services/sources.ts
 import { apiDev } from './api';
+import {
+  createSourceWithFiles,
+  createSourceWithFilesForExistingSource,
+  registerUploadedFiles,
+  uploadFilesToS3WithProgress,
+  UploadedFileInfo,
+  FileProgressCallback,
+} from './s3';
 
 export interface Source {
   id: string;
@@ -34,6 +41,22 @@ export interface SourcesListParams {
   sorting?: string;
 }
 
+export interface CreateSourceFileRequest {
+  agencyBaseId: string;
+  subsector: string;
+  type: 'file';
+  files: File[];
+}
+
+// New interface for adding files to existing source
+export interface AddFilesToExistingSourceRequest {
+  agencyBaseId: string;
+  sourceBaseId: string;
+  subsector: string;
+  type: 'file';
+  files: File[];
+}
+
 export interface CreateSourceRequest {
   agencyBaseId: string;
   url?: string;
@@ -47,7 +70,12 @@ export interface UpdateSourceSubsectorRequest {
   subsector: string;
 }
 
-// Get all sources for a specific agency
+// Re-export types that might be needed by consumers
+export type { FileProgressCallback } from './s3';
+
+/**
+ * Get all sources for a specific agency
+ */
 export const getSources = async (
   params: SourcesListParams
 ): Promise<SourcesListResponse> => {
@@ -75,32 +103,132 @@ export const getSources = async (
   };
 };
 
-// Create a new source (file upload)
+/**
+ * Create a new source with file upload using S3
+ */
 export const createSourceFile = async (
-  data: CreateSourceRequest
+  data: CreateSourceFileRequest,
+  onFileProgress?: FileProgressCallback
 ): Promise<Source> => {
-  const formData = new FormData();
-  formData.append('agencyBaseId', data.agencyBaseId);
-  formData.append('subsector', data.subsector);
-  formData.append('type', 'file');
-
-  if (data.files) {
-    data.files.forEach((file) => {
-      formData.append('files', file);
-    });
+  if (!data.files || data.files.length === 0) {
+    throw new Error('No files provided');
   }
 
-  const response = await apiDev.post('/source/add', formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
-  });
+  try {
+    // Step 1: Create source and get upload URLs
+    const uploadResponse = await createSourceWithFiles(
+      data.agencyBaseId,
+      data.subsector,
+      data.files
+    );
 
-  const apiResponse: ApiResponse = response.data;
-  return apiResponse.response?.[0] || apiResponse.response;
+    // Step 2: Upload files to S3 with progress tracking
+    const successfulUploads = await uploadFilesToS3WithProgress(
+      uploadResponse.fileUploadUrls,
+      data.files,
+      onFileProgress
+    );
+
+    // Step 3: Register only successfully uploaded files in database
+    if (successfulUploads.length > 0) {
+      try {
+        const filesToRegister = successfulUploads.map((uploadInfo) => ({
+          base_id: uploadInfo.uploadItem.sourceFileId,
+          file_name: uploadInfo.uploadItem.fileName,
+          subsector: data.subsector,
+          original_data_url: uploadInfo.uploadItem.path,
+        }));
+
+        await registerUploadedFiles(uploadResponse.sourceId, filesToRegister);
+      } catch (registrationError) {
+        console.error('Failed to register uploaded files:', registrationError);
+        // Don't throw here - files were uploaded successfully to S3
+        // You might want to show a warning to the user instead
+      }
+    }
+
+    // Return a source object
+    return {
+      id: uploadResponse.sourceId,
+      baseId: uploadResponse.sourceId,
+      url: 'Files',
+      subsector: data.subsector,
+      lastScrapedAt: new Date().toISOString(),
+      status: 'running',
+      agencyBaseId: data.agencyBaseId,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+  } catch (error) {
+    console.error('Error creating source with files:', error);
+    throw error;
+  }
 };
 
-// Create a new source (URL)
+/**
+ * Add files to an existing source using S3
+ */
+export const addFilesToExistingSource = async (
+  data: AddFilesToExistingSourceRequest,
+  onFileProgress?: FileProgressCallback
+): Promise<Source> => {
+  if (!data.files || data.files.length === 0) {
+    throw new Error('No files provided');
+  }
+  try {
+    // Step 1: Get upload URLs for existing source
+    const uploadResponse = await createSourceWithFilesForExistingSource(
+      data.agencyBaseId,
+      data.sourceBaseId,
+      data.files
+    );
+
+    // Step 2: Upload files to S3 with progress tracking
+    const successfulUploads = await uploadFilesToS3WithProgress(
+      uploadResponse?.fileUploadUrls,
+      data.files,
+      onFileProgress
+    );
+
+    // Step 3: Register only successfully uploaded files in database
+    if (successfulUploads.length > 0) {
+      try {
+        const filesToRegister = successfulUploads.map((uploadInfo) => ({
+          base_id: uploadInfo.uploadItem.sourceFileId,
+          file_name: uploadInfo.uploadItem.fileName,
+          subsector: data.subsector,
+          original_data_url: uploadInfo.uploadItem.path,
+        }));
+
+        await registerUploadedFiles(data.sourceBaseId, filesToRegister);
+      } catch (registrationError) {
+        console.error('Failed to register uploaded files:', registrationError);
+        // Don't throw here - files were uploaded successfully to S3
+        // You might want to show a warning to the user instead
+      }
+    }
+
+    // Return a source object (we don't have the full source data, so we construct a minimal one)
+    return {
+      id: data.sourceBaseId,
+      baseId: data.sourceBaseId,
+      url: 'Files',
+      subsector: data.subsector,
+      lastScrapedAt: new Date().toISOString(),
+      status: 'running',
+      agencyBaseId: data.agencyBaseId,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+  } catch (error) {
+    console.error('Error adding files to existing source:', error);
+    throw error;
+  }
+};
+
+/**
+ * Create a new source (URL)
+ */
 export const createSourceUrl = async (
   data: CreateSourceRequest
 ): Promise<Source> => {
@@ -115,7 +243,9 @@ export const createSourceUrl = async (
   return apiResponse.response?.[0] || apiResponse.response;
 };
 
-// Create a new source (API)
+/**
+ * Create a new source (API)
+ */
 export const createSourceApi = async (
   data: CreateSourceRequest
 ): Promise<Source> => {
@@ -130,7 +260,9 @@ export const createSourceApi = async (
   return apiResponse.response?.[0] || apiResponse.response;
 };
 
-// Update a source
+/**
+ * Update a source subsector
+ */
 export const updateSourceSubsector = async (
   sourceId: string,
   data: UpdateSourceSubsectorRequest
@@ -144,30 +276,38 @@ export const updateSourceSubsector = async (
   return apiResponse.response?.[0] || apiResponse.response;
 };
 
-// Delete a source
+/**
+ * Delete a source
+ */
 export const deleteSource = async (sourceId: string): Promise<void> => {
   await apiDev.post('/source/remove', {
     baseId: sourceId,
   });
 };
 
-// Stop scraping a source
+/**
+ * Stop scraping a source
+ */
 export const stopSourceScraping = async (sourceId: string): Promise<void> => {
   await apiDev.post('/agency/sources/stop', {
     sourceId: sourceId,
   });
 };
 
-// Refresh/restart scraping a source
+/**
+ * Refresh/restart scraping a source
+ */
 export const refreshSource = async (sourceId: string): Promise<void> => {
   await apiDev.post('/agency/sources/refresh', {
     sourceId: sourceId,
   });
 };
 
-// Get a specific source by baseId
+/**
+ * Get a specific source by baseId
+ */
 export const getSource = async (baseId: string): Promise<Source> => {
-  const response = await apiDev.get('/source/url/get', {
+  const response = await apiDev.get('/source/get', {
     params: {
       baseId: baseId,
     },
@@ -179,7 +319,9 @@ export const getSource = async (baseId: string): Promise<Source> => {
   return apiResponse.response?.[0] || apiResponse.response;
 };
 
-// Update source scrape interval
+/**
+ * Update source scrape interval
+ */
 export const updateSourceScrapeInterval = async (
   sourceId: string,
   cronSchedule: string,
