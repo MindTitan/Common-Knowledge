@@ -10,6 +10,7 @@ app = FastAPI()
 def trigger_single_page_scrapper_task(task: SpecifiedLinksScrapeTask):
     specified_links_scrapper_task.delay(task.model_dump(mode='json'))
 
+
 @app.post('/sitemap-collect-scrapper-task')
 def trigger_sitemap_collect_scrapper_task(task: SitemapCollectScrapperTask):
     sitemap_collect_scrapper_task.delay(task.model_dump(mode='json'))

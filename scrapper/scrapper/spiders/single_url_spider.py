@@ -15,7 +15,7 @@ class SingleUrlSpider(SitemapCollectSpider):
         super().__init__(*args, **kwargs)
         if isinstance(kwargs.get('task'), SpecifiedLinksScrapeTask):
             self.task: SpecifiedLinksScrapeTask = kwargs.get('task')
-            self.start_urls = [url.unicode_string() for url in self.task.urls]
+            self.start_urls = [url.url.unicode_string() for url in self.task.urls]
 
     def parse(self, response: Response, **kwargs):
         file_extension = self.guess_file_extension(

@@ -8,8 +8,13 @@ class BaseObject(BaseModel):
     source_id: str
 
 
+class LinkToScrape(BaseModel):
+    url: HttpUrl
+    id: str
+
+
 class SpecifiedLinksScrapeTask(BaseObject):
-    urls: list[HttpUrl]
+    urls: list[LinkToScrape]
 
 
 class SitemapCollectScrapperTask(BaseObject):
