@@ -2,7 +2,7 @@ SELECT copy_row_with_modifications(
     'source_file',
     'id', '::UUID', id::VARCHAR,
     ARRAY[
-        'status', '::source_file_status_type', :status,
+        'status', '::source_file_status_type', :status::source_file_status_type,
         'updated_at', '::TIMESTAMP WITH TIME ZONE', NOW()::VARCHAR
     ]::VARCHAR[]
 ) as id

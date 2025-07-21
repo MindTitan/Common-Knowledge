@@ -1,0 +1,10 @@
+{
+  "files": [
+    {{#each files}}
+    {
+      "s3_path": "{{this.original_data_url}}",
+      "local_path": "{{this.original_data_url}}"
+    }{{#unless @last}},{{/unless}}
+    {{/each}}
+  ]
+}

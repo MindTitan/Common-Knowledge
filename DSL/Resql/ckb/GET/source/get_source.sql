@@ -1,5 +1,5 @@
 SELECT 
-    id, base_id, url, subsector, last_scraped_at, status, agency_base_id, cron_schedule, update_automatically, created_at, updated_at
+    id, base_id, url, subsector, last_scraped_at, status, agency_base_id, cron_schedule, update_automatically, created_at, updated_at, type
 FROM source 
 WHERE base_id = :base_id::UUID
   AND updated_at = (

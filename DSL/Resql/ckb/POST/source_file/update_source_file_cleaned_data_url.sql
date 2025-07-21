@@ -3,7 +3,8 @@ SELECT copy_row_with_modifications(
     'id', '::UUID', id::VARCHAR,
     ARRAY[
         'cleaned_data_url', '::TEXT', :cleaned_data_url,
-        'updated_at', '::TIMESTAMP WITH TIME ZONE', NOW()::VARCHAR
+        'updated_at', '::TIMESTAMP WITH TIME ZONE', NOW()::VARCHAR,
+        'status', '::source_file_status_type', 'finished'::source_file_status_type
     ]::VARCHAR[]
 ) as id
 FROM source_file

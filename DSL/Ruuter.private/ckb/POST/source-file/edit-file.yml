@@ -1,0 +1,118 @@
+declaration:
+  call: declare
+  version: 0.1
+  description: "Update source file edited data URL after S3 upload and re-index in search"
+  method: post
+  accepts: json
+  returns: json
+  namespace: file
+  allowlist:
+    body:
+      - field: base_id
+        type: string
+        description: "Base ID of the source file to update"
+      - field: edited_data_url
+        type: string
+        description: "S3 path of the edited file"
+
+extractRequestData:
+  assign:
+    base_id: "${incoming.body.base_id}"
+    edited_data_url: "${incoming.body.edited_data_url}"
+
+updateSourceFileEditedUrl:
+  call: http.post
+  args:
+    url: "[#CKB_RESQL]/source_file/update_source_file_edited_data_url"
+    headers:
+      type: json
+    body:
+      base_id: ${base_id}
+      edited_data_url: ${edited_data_url}
+  result: updateResult
+
+validateUpdate:
+  switch:
+    - condition: "${updateResult.response.length == 0}"
+      next: fileNotFoundError
+  next: assignDownloadData
+
+assignDownloadData:
+  assign:
+    data:
+      { "s3_path": "${edited_data_url}", "local_path": "${edited_data_url}" }
+    updated_file: ${updateResult.response.body[0]}
+
+downloadFilesToVolume:
+  call: http.post
+  args:
+    url: "[#CKB_FILE_MANAGER]/download-files-to-volume"
+    headers:
+      type: json
+    body:
+      files: ${[data]}
+  result: downloadResult
+
+prepareSearchDocument:
+  call: http.post
+  args:
+    url: "[#CKB_DMAPPER_HBS]/prepare_document"
+    headers:
+      type: json
+    body:
+      base_id: ${base_id}
+      document_type: "edited_file"
+      content_path: ${edited_data_url}
+      updated_file: ${updated_file}
+  result: searchDocResult
+
+updateSearchIndex:
+  call: http.post
+  args:
+    url: "[#CKB_SEARCH]/index/${updated_file.sourceBaseId}/bulk"
+    headers:
+      type: json
+    body:
+      documents: ${searchDocResult.response.body}
+  result: searchResult
+
+assignDeleteData:
+  assign:
+    delete_data: { "local_path": "${edited_data_url}" }
+
+deleteFileFromVolume:
+  call: http.post
+  args:
+    url: "[#CKB_FILE_MANAGER]/delete-files-from-volume"
+    headers:
+      type: json
+    body:
+      files: ${[delete_data]}
+  result: deleteResult
+
+handleSearchError:
+  switch:
+    - condition: "${searchResult.response.statusCodeValue >= 400}"
+      next: searchIndexingError
+  next: returnSuccess
+
+searchIndexingError:
+  # Log the error but don't fail the entire operation
+  assign:
+    search_error: "Search indexing failed: ${searchResult.response.body?.error ?? 'Unknown error'}"
+  next: returnSuccessWithWarning
+
+fileNotFoundError:
+  return: "Source file not found or has been updated by another process"
+  status: 404
+  next: end
+
+returnSuccessWithWarning:
+  return: "Source file edited URL updated successfully but error in search indexing"
+  status: 200
+  next: end
+
+returnSuccess:
+  return: "Source file edited URL updated and search index updated successfully"
+  status: 200
+  next: end
