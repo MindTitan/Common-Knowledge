@@ -2,13 +2,17 @@ import mimetypes
 import hashlib
 
 from functools import cache
+from typing import Any, AsyncIterator
 from urllib.parse import urljoin, urlparse
 
+from fake_useragent import UserAgent
 from scrapy import Spider, Request
+from scrapy_playwright.page import PageMethod
 from scrapy.http import Response
 
 from api.models import SitemapCollectScrapperTask
 from scrapper.items import FileItem, MetadataItem, Metadata, ScrappedItem
+
 
 
 class SitemapCollectSpider(Spider):
@@ -84,6 +88,7 @@ class SitemapCollectSpider(Spider):
         self.visited_urls = set()
         self.valid_urls = set()
         self.hashes = set()
+        self.ua = UserAgent(platforms='desktop')
 
         if isinstance(kwargs.get('task'), SitemapCollectScrapperTask):
             self.task: SitemapCollectScrapperTask  = kwargs.get('task')
@@ -97,6 +102,15 @@ class SitemapCollectSpider(Spider):
             return ''
 
         return '.'.join(netloc.split('.')[-2:])
+
+    async def start(self) -> AsyncIterator[Any]:
+        for url in self.start_urls:
+            yield Request(url, dont_filter=True, meta={
+                'playwright': True,
+                'playwright_page_methods': [PageMethod('wait_for_timeout', 15000)]
+            }, headers={
+                "User-Agent": self.ua.random,
+            })
 
     @property
     @cache
@@ -143,4 +157,9 @@ class SitemapCollectSpider(Spider):
                 continue
 
             if next_url not in self.visited_urls:
-                yield Request(next_url, callback=self.parse)
+                yield Request(next_url, callback=self.parse, meta={
+                    'playwright': True,
+                    'playwright_page_methods': [PageMethod('wait_for_timeout', 15000)],
+                }, headers={
+                    "User-Agent": self.ua.random,
+                })

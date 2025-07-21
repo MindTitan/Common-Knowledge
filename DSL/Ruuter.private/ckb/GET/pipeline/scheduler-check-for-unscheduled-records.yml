@@ -2,7 +2,7 @@ declaration:
   call: declare
   version: 0.1
   description: "run scheduler check"
-  method: post
+  method: get
   accepts: json
   returns: json
   namespace: ckb

@@ -12,8 +12,14 @@ declaration:
         type: string
         description: "at least one not scheduled record exists"
 */
-SELECT count(*) > 0 AS exists FROM source WHERE (base_id, updated_at) IN (
+SELECT count(*) > 0 AS exists
+FROM source
+WHERE (base_id, updated_at) IN (
     SELECT base_id, max(updated_at)
     FROM source
     GROUP BY base_id
-) AND is_deleted = FALSE AND update_automatically = TRUE AND next_scrapping_at IS NULL;
+)
+    AND is_deleted = FALSE
+    AND update_automatically = TRUE
+    AND next_scrapping_at IS NULL
+    AND status NOT IN ('running', 'failed');

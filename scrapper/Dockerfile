@@ -17,4 +17,8 @@ CMD ["uvicorn", "api.app:app", "--port", "8080", "--host", "0.0.0.0"]
 
 FROM build AS celery
 
+RUN playwright install-deps
+RUN playwright install
+
+
 CMD ["celery", "-A", "worker.tasks", "worker", "--loglevel=INFO", "-E"]

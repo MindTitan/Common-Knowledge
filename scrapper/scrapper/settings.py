@@ -101,3 +101,10 @@ ALLOWED_FILETYPES = os.environ.get('SUPPORTED_TYPES', '.html,.docx,.doc,.pdf').s
 SCRAPED_DIRECTORY = os.environ.get('SCRAPED_DIRECTORY', "/scrapped-data")
 RUUTER_PRIVATE = os.environ.get('RUUTER_PRIVATE', "http://ruuter-private:8089")
 DOWNLOAD_DELAY = 0.5
+
+DOWNLOAD_HANDLERS = {
+    "http": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
+    "https": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
+}
+
+TWISTED_REACTOR = "twisted.internet.asyncioreactor.AsyncioSelectorReactor"
