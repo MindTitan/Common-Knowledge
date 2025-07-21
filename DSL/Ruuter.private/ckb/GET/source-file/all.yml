@@ -1,7 +1,7 @@
 declaration:
   call: declare
   version: 0.1
-  description: "List all scraped source files with pagination, sorting, and search"
+  description: "List all source files (scraped or uploaded) with pagination, sorting, and search"
   method: get
   accepts: json
   returns: json
@@ -11,6 +11,9 @@ declaration:
       - field: sourceId
         type: string
         description: "Source ID to filter by (optional)"
+      - field: type
+        type: string
+        description: "File type filter: 'scraped_file' or 'uploaded_file'"
       - field: page
         type: number
         description: "Page number for pagination"
@@ -27,6 +30,7 @@ declaration:
 extractRequestData:
   assign:
     source_id: "${incoming.params.sourceId}"
+    file_type: "${incoming.params.type ?? 'scraped_file'}"
     page: "${incoming.params.page ?? 1}"
     page_size: "${incoming.params.pageSize ?? 10}"
     sorting: "${incoming.params.sorting ?? 'last_scraped_at desc'}"
@@ -36,7 +40,7 @@ checkSearchRequired:
   switch:
     - condition: ${!!search_query}
       next: performSearch
-  next: getScrapedSourceFiles
+  next: getSourceFilesByType
 
 performSearch:
   call: http.get
@@ -52,7 +56,7 @@ performSearch:
 getSourceFilesByIds:
   call: http.get
   args:
-    url: "[#CKB_RESQL]/source_file/list_scraped_source_files_by_ids"
+    url: "[#CKB_RESQL]/source_file/list_${file_type === 'scraped_file' ? 'scraped' : 'uploaded'}_source_files_by_ids"
     query:
       source_file_ids: ${searchResult.response.body.sourceFileIds?.join(',') ?? ''}
       page: ${page}
@@ -62,10 +66,30 @@ getSourceFilesByIds:
   result: res
   next: returnSuccess
 
+getSourceFilesByType:
+  switch:
+    - condition: ${file_type === 'scraped_file'}
+      next: getScrapedSourceFiles
+    - condition: ${file_type === 'uploaded_file'}
+      next: getUploadedSourceFiles
+  next: getScrapedSourceFiles
+
 getScrapedSourceFiles:
   call: http.get
   args:
     url: "[#CKB_RESQL]/source_file/list_scraped_source_files"
+    query:
+      source_id: ${source_id}
+      page: ${page}
+      page_size: ${page_size}
+      sorting: ${sorting}
+  result: res
+  next: returnSuccess
+
+getUploadedSourceFiles:
+  call: http.get
+  args:
+    url: "[#CKB_RESQL]/source_file/list_uploaded_source_files"
     query:
       source_id: ${source_id}
       page: ${page}

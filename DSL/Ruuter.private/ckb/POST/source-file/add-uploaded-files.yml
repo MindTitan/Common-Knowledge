@@ -1,0 +1,92 @@
+declaration:
+  call: declare
+  version: 0.1
+  description: "Add uploaded files to source_file table"
+  method: post
+  accepts: json
+  returns: json
+  namespace: source-file
+  allowlist:
+    body:
+      - field: sourceId
+        type: string
+        description: "Source ID to associate files with"
+      - field: files
+        type: array
+        description: "Array of uploaded file objects"
+
+extractRequestData:
+  assign:
+    source_id: "${incoming.body.sourceId}"
+    files: "${incoming.body.files}"
+
+validateInput:
+  switch:
+    - condition: ${source_id === null || source_id === ""}
+      next: returnError
+    - condition: ${files === null || files.length === 0}
+      next: returnError
+
+createUploadedSourceFiles:
+  call: http.post
+  args:
+    url: "[#CKB_RESQL]/source_file/create_uploaded_source_files"
+    headers:
+      type: json
+    body:
+      source_id: ${source_id}
+      files: ${files}
+  result: createResult
+
+prepareDownloadFiles:
+  call: http.post
+  args:
+    url: "[#CKB_DMAPPER_HBS]/prepare_download_files"
+    headers:
+      type: json
+    body:
+      files: ${files}
+  result: downloadFilesResult
+
+downloadFilesToVolume:
+  call: http.post
+  args:
+    url: "[#CKB_FILE_MANAGER]/download-files-to-volume-async"
+    headers:
+      type: json
+    body:
+      files: ${downloadFilesResult.response.body.files}
+  result: downloadResult
+
+checkDownloadResult:
+  switch:
+    - condition: ${downloadResult.response.statusCodeValue >= 200 && downloadResult.response.statusCodeValue < 300}
+      next: checkCreateResult
+  next: logDownloadError
+
+logDownloadError:
+  # Log download error but don't fail the entire process since files are created in DB
+  assign:
+    download_error: "Warning: Failed to download some files to volume"
+  next: checkCreateResult
+
+checkCreateResult:
+  switch:
+    - condition: ${createResult.response.statusCodeValue >= 200 && createResult.response.statusCodeValue < 300}
+      next: returnSuccess
+  next: returnCreateError
+
+returnSuccess:
+  return: ${createResult.response.body}
+  status: 200
+  next: end
+
+returnError:
+  return: "Missing required fields: sourceId and files array"
+  status: 400
+  next: end
+
+returnCreateError:
+  return: "Failed to create uploaded source files"
+  status: 500
+  next: end

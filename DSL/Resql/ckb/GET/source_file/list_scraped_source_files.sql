@@ -2,7 +2,7 @@ WITH latest_scraped_pages AS (
     SELECT DISTINCT ON (base_id) 
         id, base_id, source_base_id, url, page_title, status, 
         original_data_url, cleaned_data_url, edited_data_url, 
-        is_excluded, last_scraped_at, is_deleted
+        is_excluded, updated_at, originally_scraped, last_scraped_at, is_deleted
     FROM source_file 
     WHERE type = 'scraped_file'
       AND (:source_id IS NULL OR source_base_id = :source_id::UUID)
@@ -10,7 +10,7 @@ WITH latest_scraped_pages AS (
 )
 SELECT 
     id, base_id, source_base_id, url, page_title, status,
-    original_data_url, cleaned_data_url, edited_data_url, is_excluded, last_scraped_at,
+    original_data_url, cleaned_data_url, edited_data_url, is_excluded, updated_at, originally_scraped, last_scraped_at,
     :page as page,
     CEIL(COUNT(*) OVER () / :page_size::DECIMAL) AS total_pages
 FROM latest_scraped_pages
