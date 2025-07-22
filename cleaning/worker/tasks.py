@@ -44,7 +44,7 @@ def clean_file_task(entity: EntityToClean):
         f.write(cleaned_text)
 
     r = requests.post(
-        f"{settings.ruuter_private}/ckb/pipeline/upload-file-sync",
+        f"{settings.ruuter_internal}/ckb/pipeline/upload-file-sync",
         json={
             'source_file_path': cleaned_text_filename.as_posix(),
         }
@@ -57,7 +57,7 @@ def clean_file_task(entity: EntityToClean):
         json.dump(metadata, f)
 
     r = requests.post(
-        f"{settings.ruuter_private}/ckb/pipeline/upload-file-sync",
+        f"{settings.ruuter_internal}/ckb/pipeline/upload-file-sync",
         json={
             'source_file_path': cleaned_metadata_filename.as_posix(),
         }
@@ -65,7 +65,7 @@ def clean_file_task(entity: EntityToClean):
     uploaded_cleaned_metadata_url = r.json()['response']
 
     requests.post(
-        f"{settings.ruuter_private}/ckb/source-file/update-cleaned-file",
+        f"{settings.ruuter_internal}/ckb/source-file/update-cleaned-file",
         json={
             'base_id': entity.source_file_id,
             'cleaned_data_url': uploaded_cleaned_text_url,

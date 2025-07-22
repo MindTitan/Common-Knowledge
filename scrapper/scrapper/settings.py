@@ -101,7 +101,7 @@ ITEM_PIPELINES = {
 FEED_EXPORT_ENCODING = "utf-8"
 ALLOWED_FILETYPES = os.environ.get('SUPPORTED_TYPES', '.html,.docx,.doc,.pdf').split(',')
 SCRAPED_DIRECTORY = os.environ.get('SCRAPED_DIRECTORY', "/scrapped-data")
-RUUTER_PRIVATE = os.environ.get('RUUTER_PRIVATE', "http://ruuter-private:8089")
+RUUTER_INTERNAL = os.environ.get('RUUTER_INTERNAL', "http://ruuter-internal:8089")
 DOWNLOAD_DELAY = 0.5
 
 DOWNLOAD_HANDLERS = {

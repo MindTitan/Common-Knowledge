@@ -62,7 +62,7 @@ class MetadataPipeline:
         item.metadata_path = full_path
 
         r = requests.post(
-            f"{spider.settings.get('RUUTER_PRIVATE')}/ckb/pipeline/upload-file-sync",
+            f"{spider.settings.get('RUUTER_INTERNAL')}/ckb/pipeline/upload-file-sync",
             json={
                 'source_file_path': full_path,
             }
@@ -86,7 +86,7 @@ class FilePipeline:
         item.file_path = full_path
 
         r = requests.post(
-            f"{spider.settings.get('RUUTER_PRIVATE')}/ckb/pipeline/upload-file-sync",
+            f"{spider.settings.get('RUUTER_INTERNAL')}/ckb/pipeline/upload-file-sync",
             json={
                 'source_file_path': full_path,
             }
@@ -102,7 +102,7 @@ class TriggerCleaningPipeline:
             return item
 
         requests.post(
-            f"{spider.settings.get('RUUTER_PRIVATE')}/ckb/pipeline/clean-scraped-file",
+            f"{spider.settings.get('RUUTER_INTERNAL')}/ckb/pipeline/clean-scraped-file",
             json={
                 'file_path': item.file_path,
                 'meta_data_path': item.metadata_path,
@@ -128,7 +128,7 @@ class CreateSourceFile:
         spider: SitemapCollectSpider
         task: BaseObject = spider.task
 
-        res = requests.post(f'{spider.settings.get('RUUTER_PRIVATE')}/ckb/source-file/add-scrapped-file', json={
+        res = requests.post(f'{spider.settings.get('RUUTER_INTERNAL')}/ckb/source-file/add-scrapped-file', json={
             'source_id': task.source_id,
             'url': item.metadata.source_url,
             'page_title': item.metadata.page_title,
@@ -149,7 +149,7 @@ class UpdateSourceFile:
         if item.source_file_id is None:
             return item
 
-        requests.post(f'{spider.settings.get('RUUTER_PRIVATE')}/ckb/source-file/update-scrapped-file', json={
+        requests.post(f'{spider.settings.get('RUUTER_INTERNAL')}/ckb/source-file/update-scrapped-file', json={
             'base_id': item.source_file_id,
             'url': item.metadata.source_url,
             'page_title': item.metadata.page_title,
@@ -169,7 +169,7 @@ class ScrappingFinishedPipeline:
         spider: SitemapCollectSpider | SingleUrlSpider
         task: BaseObject = spider.task
 
-        requests.post(f'{spider.settings.get('RUUTER_PRIVATE')}/ckb/source/update-status', json={
+        requests.post(f'{spider.settings.get('RUUTER_INTERNAL')}/ckb/source/update-status', json={
             'source_id': task.source_id,
             'status': 'finished',
         })

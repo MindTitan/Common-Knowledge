@@ -9,7 +9,6 @@ declaration:
   allowlist:
     body: []
 
-
 # it works like  this:
 #
 # entities_to_run_exists = get_entities_to_run_exists()
@@ -20,7 +19,6 @@ declaration:
 #
 # return "OK"
 
-
 checkSourceToRunExists:
   maxRecursions: 999
   call: http.get
@@ -30,14 +28,12 @@ checkSourceToRunExists:
   result: exists
   next: checkIfExists
 
-
 checkIfExists:
   maxRecursions: 999
   switch:
     - condition: ${exists.response.body[0].exists}
       next: getOneSourceToRun
   next: returnSuccess
-
 
 getOneSourceToRun:
   maxRecursions: 999
@@ -46,7 +42,6 @@ getOneSourceToRun:
     url: "[#CKB_RESQL]/source/update_source_is_running"
     contentType: json
   result: sourceToRun
-
 
 getAgencyForSource:
   maxRecursions: 999
@@ -58,7 +53,6 @@ getAgencyForSource:
       base_id: ${sourceToRun.response.body[0].agencyBaseId}
   result: agency
 
-
 getSourceFilesForSource:
   maxRecursions: 999
   call: http.get
@@ -67,7 +61,6 @@ getSourceFilesForSource:
     query:
       source_base_id: ${sourceToRun.response.body[0].baseId}
   result: sourceFiles
-
 
 triggerPipelineForSource:
   maxRecursions: 999
@@ -81,7 +74,6 @@ triggerPipelineForSource:
     source_files: ${sourceFiles.response.body}
   result: res
   next: checkSourceToRunExists
-
 
 returnSuccess:
   return: "OK"
