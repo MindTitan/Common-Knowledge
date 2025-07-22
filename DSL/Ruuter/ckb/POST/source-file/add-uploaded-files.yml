@@ -38,13 +38,14 @@ createUploadedSourceFiles:
       files: ${files}
   result: createResult
 
-prepareDownloadFiles:
+prepareDownloadFilesWithCallback:
   call: http.post
   args:
-    url: "[#CKB_DMAPPER_HBS]/prepare_download_files"
+    url: "[#CKB_DMAPPER_HBS]/prepare_download_files_with_callback"
     headers:
       type: json
     body:
+      source_id: ${source_id}
       files: ${files}
   result: downloadFilesResult
 
@@ -56,6 +57,10 @@ downloadFilesToVolume:
       type: json
     body:
       files: ${downloadFilesResult.response.body.files}
+      callback:
+        url: "[#CKB_RUUTER_INTERNAL]/source-file/files-uploaded-callback"
+        method: "POST"
+        body: ${downloadFilesResult.response.body.callback_body}
   result: downloadResult
 
 checkDownloadResult:

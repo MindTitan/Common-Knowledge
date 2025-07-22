@@ -1,6 +1,7 @@
 import os
 import logging
 import uuid
+import requests
 from typing import List, Dict, Optional
 from pathlib import Path
 from datetime import datetime, timedelta
@@ -28,7 +29,7 @@ VOLUME_PATH = '/app/data'
 _download_tasks: Dict[str, dict] = {}
 
 
-def create_download_task(files: List[FileDownloadItem]) -> str:
+def create_download_task(files: List[FileDownloadItem], callback: Optional = None) -> str:
     """Create a new download task in memory."""
     task_id = str(uuid.uuid4())
     
@@ -36,6 +37,7 @@ def create_download_task(files: List[FileDownloadItem]) -> str:
         "task_id": task_id,
         "status": TaskStatus.PENDING,
         "files": files,
+        "callback": callback,
         "total_files": len(files),
         "completed_files": 0,
         "failed_files": 0,
@@ -138,6 +140,11 @@ def process_download_task(task_id: str) -> None:
         
         logger.info(f"Download task {task_id} completed: {successful_downloads} successful, {failed_downloads} failed")
         
+        # Execute callback if provided
+        callback = task_data.get("callback")
+        if callback:
+            execute_callback(task_id, callback, task_data)
+        
     except Exception as e:
         error_msg = f"Download task failed: {str(e)}"
         update_download_task(
@@ -146,6 +153,51 @@ def process_download_task(task_id: str) -> None:
             error_message=error_msg
         )
         logger.error(f"Download task {task_id} failed: {error_msg}")
+        
+        # Execute callback even on failure if provided
+        callback = task_data.get("callback")
+        if callback:
+            execute_callback(task_id, callback, task_data)
+
+
+def execute_callback(task_id: str, callback, task_data: dict) -> None:
+    """Execute the callback HTTP request exactly as configured."""
+    try:
+        # Prepare headers
+        headers = callback.headers or {}
+        if "Content-Type" not in headers:
+            headers["Content-Type"] = "application/json"
+        
+        # Get method and body from the CallbackRequest object
+        method = callback.method.upper()
+        body_data = callback.body or {}
+        
+        # Make the callback request with only the configured data
+        if method == "GET":
+            response = requests.get(
+                callback.url,
+                headers=headers,
+                params=body_data,
+                timeout=30
+            )
+        else:  # POST, PUT, PATCH, etc.
+            response = requests.request(
+                method,
+                callback.url,
+                headers=headers,
+                json=body_data,
+                timeout=30
+            )
+        
+        if response.status_code < 400:
+            logger.info(f"Callback executed successfully for task {task_id}: {response.status_code}")
+        else:
+            logger.warning(f"Callback returned error status for task {task_id}: {response.status_code} - {response.text}")
+            
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Failed to execute callback for task {task_id}: {str(e)}")
+    except Exception as e:
+        logger.error(f"Unexpected error executing callback for task {task_id}: {str(e)}")
 
 
 def download_files_to_volume_async(request: DownloadToVolumeRequest) -> DownloadTaskResponse:
@@ -153,8 +205,8 @@ def download_files_to_volume_async(request: DownloadToVolumeRequest) -> Download
     if not request.files:
         raise ValueError("No files specified for download")
     
-    # Create download task
-    task_id = create_download_task(request.files)
+    # Create download task with callback
+    task_id = create_download_task(request.files, request.callback)
     
     return DownloadTaskResponse(
         task_id=task_id,

@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Dict
 from enum import Enum
 from datetime import datetime
 
@@ -53,8 +53,15 @@ class FileDownloadItem(BaseModel):
     s3_path: str
     local_path: str
 
+class CallbackRequest(BaseModel):
+    url: str
+    method: str = "POST"
+    headers: Optional[Dict[str, str]] = None
+    body: Optional[Dict] = None
+
 class DownloadToVolumeRequest(BaseModel):
     files: List[FileDownloadItem]
+    callback: Optional[CallbackRequest] = None
 
 class FileDownloadResult(BaseModel):
     s3_path: str

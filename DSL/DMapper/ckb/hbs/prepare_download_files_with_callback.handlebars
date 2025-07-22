@@ -1,0 +1,22 @@
+{
+  "files": [
+    {{#each files}}
+    {
+      "s3_path": "{{this.original_data_url}}",
+      "local_path": "{{this.original_data_url}}"
+    }{{#unless @last}},{{/unless}}
+    {{/each}}
+  ],
+  "callback_body": {
+    "source_id": "{{source_id}}",
+    "delete_request": {
+      "files": [
+        {{#each files}}
+        {
+          "local_path": "{{this.original_data_url}}"
+        }{{#unless @last}},{{/unless}}
+        {{/each}}
+      ]
+    }
+  }
+}

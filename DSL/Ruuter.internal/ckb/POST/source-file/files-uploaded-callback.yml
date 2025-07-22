@@ -1,0 +1,59 @@
+declaration:
+  call: declare
+  version: 0.1
+  description: "Cleanup callback after files are uploaded and downloaded to volume"
+  method: post
+  accepts: json
+  returns: json
+  namespace: source-file
+  allowlist:
+    body:
+      - field: source_id
+        type: string
+        description: "Source ID from callback"
+      - field: delete_request
+        type: object
+        description: "Delete request object with files array"
+
+extractCallbackData:
+  assign:
+    source_id: "${incoming.body.source_id}"
+    delete_request: "${incoming.body.delete_request}"
+
+validateCallback:
+  switch:
+    - condition: ${delete_request === null || delete_request.files === null}
+      next: returnNoFiles
+    - condition: ${delete_request.files.length === 0}
+      next: returnNoFiles
+
+deleteFilesFromVolume:
+  call: http.post
+  args:
+    url: "[#CKB_FILE_MANAGER]/delete-files-from-volume"
+    headers:
+      type: json
+    body:
+      files: ${delete_request.files}
+  result: deleteResult
+
+checkDeleteResult:
+  switch:
+    - condition: ${deleteResult.response.statusCodeValue >= 200 && deleteResult.response.statusCodeValue < 300}
+      next: returnSuccess
+  next: returnDeleteError
+
+returnSuccess:
+  return: "Files cleanup completed successfully"
+  status: 200
+  next: end
+
+returnNoFiles:
+  return: "No files to cleanup"
+  status: 200
+  next: end
+
+returnDeleteError:
+  return: "Failed to delete some files from volume"
+  status: 500
+  next: end
