@@ -65,7 +65,7 @@ services:
     ports:
       - 8087:8087
     volumes:
-      - ./DSL/Resql:/workspace/app/templates
+      - ./DSL/Resql:/DSL
     networks:
       - bykstack
 
@@ -84,7 +84,7 @@ services:
     ports:
       - 8090:8090
     volumes:
-      - ./DSL/Resql:/workspace/app/templates
+      - ./DSL/Resql:/DSL
     networks:
       - bykstack
 
