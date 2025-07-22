@@ -1,0 +1,35 @@
+declaration:
+  call: declare
+  version: 0.1
+  description: "update cleaned file table"
+  method: post
+  accepts: json
+  returns: json
+  namespace: source-file
+  allowlist:
+    body:
+      - field: base_id
+        type: string
+        description: "Source file ID"
+      - field: cleaned_data_url
+        type: string
+        description: "cleaned data url"
+      - field: cleaned_metadata_url
+        type: string
+        description: "cleaned data's metadata url"
+
+
+updateScrappedFile:
+  call: http.post
+  args:
+    url: "[#CKB_RESQL]/source_file/update_source_file_cleaned"
+    body:
+      base_id: ${incoming.body.base_id}
+      cleaned_data_url: ${incoming.body.cleaned_data_url}
+      cleaned_metadata_url: ${incoming.body.cleaned_metadata_url}
+  result: res
+
+
+returnResult:
+  return: "OK"
+  next: end

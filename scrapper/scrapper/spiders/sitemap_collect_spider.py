@@ -4,6 +4,7 @@ import hashlib
 from functools import cache
 from typing import Any, AsyncIterator
 from urllib.parse import urljoin, urlparse
+from playwright.async_api import Page
 
 from fake_useragent import UserAgent
 from scrapy import Spider, Request
@@ -103,14 +104,21 @@ class SitemapCollectSpider(Spider):
 
         return '.'.join(netloc.split('.')[-2:])
 
+    def get_meta(self):
+        return {
+            'playwright': True,
+            'playwright_include_page': True,
+            'playwright_page_methods': [PageMethod('wait_for_timeout', 500)]
+        }
+
+    def get_headers(self):
+        return {
+            "User-Agent": self.ua.random,
+        }
+
     async def start(self) -> AsyncIterator[Any]:
         for url in self.start_urls:
-            yield Request(url, dont_filter=True, meta={
-                'playwright': True,
-                'playwright_page_methods': [PageMethod('wait_for_timeout', 15000)]
-            }, headers={
-                "User-Agent": self.ua.random,
-            })
+            yield Request(url, dont_filter=True, meta=self.get_meta(), headers=self.get_headers())
 
     @property
     @cache
@@ -123,7 +131,7 @@ class SitemapCollectSpider(Spider):
         guessed_extension = mimetypes.guess_extension(pure_content_type)
         return guessed_extension
 
-    def parse(self, response: Response, **kwargs):
+    async def parse(self, response: Response, **kwargs):
         self.visited_urls.add(response.url)
 
         file_extension = self.guess_file_extension(
@@ -132,6 +140,17 @@ class SitemapCollectSpider(Spider):
         if file_extension not in self.settings.get('ALLOWED_FILETYPES'):
             # TODO: place log here
             return
+
+        page: Page = response.meta["playwright_page"]
+
+        if file_extension == '.html':
+            title = await page.title()
+        else:
+            title = response.url
+
+        await page.close()
+
+
         self.valid_urls.add(response.url)
         hashed = hashlib.sha1(response.body).hexdigest()
         if hashed in self.hashes:
@@ -140,9 +159,11 @@ class SitemapCollectSpider(Spider):
 
         file_item = FileItem(body=response.body, source_url=response.url, extension=file_extension)
 
-        metadata_item = MetadataItem(file_type=file_extension, metadata=Metadata(), source_url=response.url)
+        metadata_item = MetadataItem(
+            file_type=file_extension, metadata=Metadata(), source_url=response.url, page_title=title
+        )
 
-        scrapped_item = ScrappedItem(file=file_item, metadata=metadata_item)
+        scrapped_item = ScrappedItem(file=file_item, metadata=metadata_item, hash=hashed)
         yield scrapped_item
 
         if file_extension != '.html':
@@ -157,9 +178,4 @@ class SitemapCollectSpider(Spider):
                 continue
 
             if next_url not in self.visited_urls:
-                yield Request(next_url, callback=self.parse, meta={
-                    'playwright': True,
-                    'playwright_page_methods': [PageMethod('wait_for_timeout', 15000)],
-                }, headers={
-                    "User-Agent": self.ua.random,
-                })
+                yield Request(next_url, callback=self.parse, meta=self.get_meta(), headers=self.get_headers())

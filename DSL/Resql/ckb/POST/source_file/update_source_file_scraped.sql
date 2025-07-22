@@ -5,7 +5,10 @@ SELECT copy_row_with_modifications(
         'url', '::TEXT', :url,
         'page_title', '::TEXT', :page_title,
         'original_data_url', '::TEXT', :original_data_url,
+        'original_metadata_url', '::TEXT', :original_metadata_url,
+        'original_data_hash', '::TEXT', :original_data_hash,
         'last_scraped_at', '::TIMESTAMP WITH TIME ZONE', :scraped_at::TEXT,
+        'status', '::SOURCE_FILE_STATUS_TYPE', 'cleaning',
         'updated_at', '::TIMESTAMP WITH TIME ZONE', NOW()::VARCHAR
     ]::VARCHAR[]
 ) as id

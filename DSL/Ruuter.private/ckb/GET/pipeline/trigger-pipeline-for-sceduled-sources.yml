@@ -63,7 +63,7 @@ getSourceFilesForSource:
   maxRecursions: 999
   call: http.get
   args:
-    url: "[#CKB_RESQL]/source_file/list_source_files_to_run_by_source_base_id"
+    url: "[#CKB_RESQL]/source_file/update_source_files_to_scraping_by_source_base_id"
     query:
       source_base_id: ${sourceToRun.response.body[0].baseId}
   result: sourceFiles

@@ -1,4 +1,5 @@
 import json
+import logging
 import sys
 
 from scrapy.crawler import CrawlerProcess
@@ -13,6 +14,7 @@ from scrapper.spiders.single_url_spider import SingleUrlSpider
 
 
 def main():
+    logging.disable(logging.DEBUG)
     task = SpecifiedLinksScrapeTask(**json.loads(sys.argv[1][1:-1]))
     process = CrawlerProcess(get_project_settings())
     process.crawl(SingleUrlSpider, task=task)

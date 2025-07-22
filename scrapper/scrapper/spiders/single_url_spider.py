@@ -1,3 +1,5 @@
+from playwright.async_api import Page
+from scrapy import Request
 from scrapy.http import Response
 
 from scrapper.items import FileItem, MetadataItem, Metadata, ScrappedItem
@@ -17,17 +19,25 @@ class SingleUrlSpider(SitemapCollectSpider):
             self.task: SpecifiedLinksScrapeTask = kwargs.get('task')
             self.start_urls = [url.url.unicode_string() for url in self.task.urls]
 
-    def parse(self, response: Response, **kwargs):
-        file_extension = self.guess_file_extension(
-            response.headers.get(b'Content-Type', 'text/html').decode('utf-8')
-        )
-        if file_extension not in self.settings.get('ALLOWED_FILETYPES'):
-            # TODO: place log here
-            return
+    async def parse(self, response: Response, **kwargs):
+        async for obj in super().parse(response, **kwargs):
+            if isinstance(obj, Request):
+                continue
 
-        file_item = FileItem(body=response.body, source_url=response.url, extension=file_extension)
+            if isinstance(obj, ScrappedItem):
+                base_id = None
+                hashed = None
+                for source_file in self.task.urls:
+                    if source_file.url == response.request.url:
+                        base_id = source_file.id
+                        hashed = source_file.hash
 
-        metadata_item = MetadataItem(file_type=file_extension, metadata=Metadata(), source_url=response.url)
+                obj.source_file_id = base_id
 
-        scrapped_item = ScrappedItem(file=file_item, metadata=metadata_item)
-        yield scrapped_item
+                if hashed is not None and obj.hash == hashed:
+                    self.logger.info(
+                        f'Skipping {obj.metadata.source_url} because hash did not changed and it contains same data'
+                    )
+                    continue
+
+                yield obj

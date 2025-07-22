@@ -1,4 +1,6 @@
 import json
+import requests
+import shutil
 
 from celery import Celery
 from unstructured.partition.auto import partition
@@ -41,7 +43,34 @@ def clean_file_task(entity: EntityToClean):
     with cleaned_text_filename.open("w") as f:
         f.write(cleaned_text)
 
+    r = requests.post(
+        f"{settings.ruuter_private}/ckb/pipeline/upload-file-sync",
+        json={
+            'source_file_path': cleaned_text_filename.as_posix(),
+        }
+    )
+    uploaded_cleaned_text_url = r.json()['response']
+
     cleaned_metadata_filename = entity.directory_path / "cleaned.meta.json"
     with cleaned_metadata_filename.open("w") as f:
         metadata['metadata']['cleaned'] = True
         json.dump(metadata, f)
+
+    r = requests.post(
+        f"{settings.ruuter_private}/ckb/pipeline/upload-file-sync",
+        json={
+            'source_file_path': cleaned_metadata_filename.as_posix(),
+        }
+    )
+    uploaded_cleaned_metadata_url = r.json()['response']
+
+    requests.post(
+        f"{settings.ruuter_private}/ckb/source-file/update-cleaned-file",
+        json={
+            'base_id': entity.source_file_id,
+            'cleaned_data_url': uploaded_cleaned_text_url,
+            'cleaned_metadata_url': uploaded_cleaned_metadata_url,
+        }
+    )
+
+    shutil.rmtree(entity.directory_path)

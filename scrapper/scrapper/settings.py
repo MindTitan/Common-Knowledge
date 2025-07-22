@@ -67,11 +67,13 @@ ROBOTSTXT_OBEY = True
 # Configure item pipelines
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
-   "scrapper.pipelines.CreateDirectoryPipeline": 200,
-   "scrapper.pipelines.MetadataPipeline": 300,
-   "scrapper.pipelines.FilePipeline": 800,
-   "scrapper.pipelines.TriggerCleaningPipeline": 850,
-   "scrapper.pipelines.VisitedUrlsPipeline": 999,
+    "scrapper.pipelines.CreateDirectoryPipeline": 100,
+    "scrapper.pipelines.MetadataPipeline": 200,
+    "scrapper.pipelines.FilePipeline": 300,
+    "scrapper.pipelines.UpdateSourceFile": 400,
+    "scrapper.pipelines.CreateSourceFile": 500,
+    "scrapper.pipelines.TriggerCleaningPipeline": 600,
+    "scrapper.pipelines.ScrappingFinishedPipeline": 900,
 }
 
 # Enable and configure the AutoThrottle extension (disabled by default)

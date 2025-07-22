@@ -11,6 +11,7 @@ class BaseObject(BaseModel):
 class LinkToScrape(BaseModel):
     url: HttpUrl
     id: str
+    hash: str
 
 
 class SpecifiedLinksScrapeTask(BaseObject):

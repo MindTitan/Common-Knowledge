@@ -20,6 +20,7 @@ class MetadataItem:
     file_type: str
     source_url: str
     metadata: Metadata
+    page_title: str
     version: str = "1.0"
     created_at: str = field(default_factory=lambda: str(datetime.now()))
 
@@ -28,6 +29,10 @@ class MetadataItem:
 class ScrappedItem:
     file: FileItem
     metadata: MetadataItem
+    hash: str
     file_path: str | None = None
+    file_path_uploaded: str | None = None
     metadata_path: str | None = None
+    metadata_path_uploaded: str | None = None
     path: str | None = None
+    source_file_id: str | None = None

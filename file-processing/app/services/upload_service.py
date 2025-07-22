@@ -131,8 +131,7 @@ def upload_file_sync(source_file_path: str) -> str:
         if not os.path.exists(full_source_path):
             raise ValueError(f"Source file not found: {full_source_path}")
         
-        filename = os.path.basename(source_file_path)
-        destination_path = f"uploads/{filename}"
+        destination_path = f"uploads{source_file_path}"
         
         return storage_provider.upload_file(full_source_path, destination_path)
         

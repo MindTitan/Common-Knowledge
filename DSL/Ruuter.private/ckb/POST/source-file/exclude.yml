@@ -23,7 +23,7 @@ extractRequestData:
 excludeSourceFile:
   call: http.post
   args:
-    url: "[#CKB_RESQL]/source_file/exclude_source_file"
+    url: "[#CKB_RESQL]/source_file/update_source_file_exclude"
     headers:
       type: json
     body:

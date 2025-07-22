@@ -33,6 +33,7 @@ services:
       - PERIODIC_CLEANUP_INTERVAL_MINUTES=${PERIODIC_CLEANUP_INTERVAL_MINUTES:-60}
       - MAX_TASK_AGE_HOURS=${MAX_TASK_AGE_HOURS:-24}
     volumes:
+      - ./scrapped-data:/scrapped-data
       - ./search-data:/app/data:rw
       - ./file-processing/logs:/app/logs:rw
       - ./file-processing/app:/app/app:rw
@@ -153,7 +154,7 @@ services:
       context: ./data-export
       dockerfile: Dockerfile
     ports:
-      - 8888:8888
+      - 8889:8888
     depends_on:
       - database
     environment:
