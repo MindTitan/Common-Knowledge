@@ -52,7 +52,7 @@ class UploadUrlResponse(BaseModel):
 class FileDownloadItem(BaseModel):
     s3_path: str
     local_path: str
-    is_folder: bool = False
+    is_folder: bool = False  # New field - explicitly specify if it's a folder
 
 class CallbackRequest(BaseModel):
     url: str
@@ -70,8 +70,8 @@ class FileDownloadResult(BaseModel):
     status: str  # "success" or "failed"
     file_size: Optional[int] = None
     error_message: Optional[str] = None
-    is_folder: bool = False
-    files_count: Optional[int] = None
+    is_folder: bool = False  # Track what type was downloaded
+    files_count: Optional[int] = None  # For folders, number of files downloaded
 
 class DownloadToVolumeResponse(BaseModel):
     total_files: int
@@ -115,3 +115,45 @@ class DeleteFromVolumeResponse(BaseModel):
     successful_deletions: int
     failed_deletions: int
     results: List[FileDeleteResult]
+
+# New schemas for zip and upload functionality
+class FolderZipItem(BaseModel):
+    s3_path: str  # Source folder path in S3
+    s3_zip_path: str  # Destination zip file path in S3
+
+class ZipAndUploadRequest(BaseModel):
+    folders: List[FolderZipItem]
+    callback: Optional[CallbackRequest] = None
+
+class FolderZipResult(BaseModel):
+    s3_path: str
+    s3_zip_path: str
+    status: str  # "success" or "failed"
+    zip_size: Optional[int] = None
+    files_count: Optional[int] = None
+    error_message: Optional[str] = None
+
+class ZipAndUploadResponse(BaseModel):
+    total_folders: int
+    successful_zips: int
+    failed_zips: int
+    results: List[FolderZipResult]
+
+class ZipTaskResponse(BaseModel):
+    task_id: str
+    status: TaskStatus
+    total_folders: int
+    successful_zips: int = 0
+    failed_zips: int = 0
+    results: List[FolderZipResult] = []
+
+class ZipTaskStatusResponse(BaseModel):
+    task_id: str
+    status: TaskStatus
+    total_folders: int
+    completed_folders: int
+    failed_folders: int
+    results: List[FolderZipResult]
+    error_message: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
