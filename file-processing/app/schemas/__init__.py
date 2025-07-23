@@ -17,6 +17,16 @@ class FileUploadResponse(BaseModel):
     task_id: str
     status: str = "pending"
 
+class FileContentUploadRequest(BaseModel):
+    file_content: str  # Base64 encoded file content
+    file_path: str  # S3 destination path
+    content_type: Optional[str] = "application/octet-stream"
+
+class FileContentUploadResponse(BaseModel):
+    blob_storage_path: str
+    status: str = "completed"
+    file_size: int
+
 class DownloadFileRequest(BaseModel):
     path: str
 

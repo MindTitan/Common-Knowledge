@@ -3,7 +3,15 @@ import os
 import logging
 from typing import Optional, Dict
 from datetime import datetime, timedelta
-from app.schemas import TaskStatus, UploadUrlRequest, UploadUrlResponse, UploadUrlItem, UploadTaskStatusResponse
+from app.schemas import (
+    TaskStatus, 
+    UploadUrlRequest, 
+    UploadUrlResponse, 
+    UploadUrlItem, 
+    UploadTaskStatusResponse,
+    FileContentUploadRequest,
+    FileContentUploadResponse
+)
 from app.services.blob_storage import storage_provider, BlobStorageException
 from app.core.config import settings
 
@@ -122,7 +130,6 @@ def generate_upload_urls(request: UploadUrlRequest) -> UploadUrlResponse:
         raise ValueError(f"Failed to generate upload URLs: {str(e)}")
 
 
-
 def upload_file_sync(source_file_path: str) -> str:
     """Upload a file to blob storage synchronously."""
     try:
@@ -139,6 +146,45 @@ def upload_file_sync(source_file_path: str) -> str:
         raise ValueError(f"Blob storage error: {str(e)}")
     except Exception as e:
         raise ValueError(f"Failed to upload file: {str(e)}")
+
+
+def upload_file_content(request: FileContentUploadRequest) -> FileContentUploadResponse:
+    """Upload file content directly to blob storage."""
+    try:
+        import base64
+        
+        # Decode base64 content
+        try:
+            file_content = base64.b64decode(request.file_content)
+        except Exception as e:
+            raise ValueError(f"Invalid base64 content: {str(e)}")
+        
+        # Clean the file_path - remove any s3:// prefix if present
+        clean_file_path = request.file_path
+        if clean_file_path.startswith('s3://'):
+            parts = clean_file_path.replace('s3://', '').split('/', 1)
+            if len(parts) > 1:
+                clean_file_path = parts[1]
+            else:
+                clean_file_path = parts[0]
+        
+        # Upload content to blob storage
+        blob_storage_path = storage_provider.upload_file_content(
+            file_content, 
+            clean_file_path, 
+            request.content_type
+        )
+        
+        return FileContentUploadResponse(
+            blob_storage_path=blob_storage_path,
+            status="completed",
+            file_size=len(file_content)
+        )
+        
+    except BlobStorageException as e:
+        raise ValueError(f"Blob storage error: {str(e)}")
+    except Exception as e:
+        raise ValueError(f"Failed to upload file content: {str(e)}")
 
 
 def cleanup_old_tasks(max_age_hours: int = 24) -> int:

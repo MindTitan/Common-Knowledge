@@ -4,7 +4,9 @@ from app.schemas import (
     FileUploadResponse, 
     UploadTaskStatusResponse,
     UploadUrlRequest, 
-    UploadUrlResponse
+    UploadUrlResponse,
+    FileContentUploadRequest,
+    FileContentUploadResponse
 )
 from app.services import upload_service
 
@@ -52,6 +54,18 @@ def upload_file_sync(request: FileUploadRequest) -> dict:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to upload file: {str(e)}")
+
+
+@router.post("/upload-file-content", response_model=FileContentUploadResponse)
+def upload_file_content(request: FileContentUploadRequest) -> FileContentUploadResponse:
+    """Upload file content directly to blob storage."""
+    try:
+        return upload_service.upload_file_content(request)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to upload file content: {str(e)}")
+
 
 @router.get("/tasks/stats")
 def get_task_statistics() -> dict:

@@ -21,6 +21,32 @@ class S3Provider(BlobStorageProvider):
         )
         self.bucket_name = settings.s3_bucket_name
 
+    def upload_file_content(self, file_content: bytes, destination_path: str, content_type: str = "application/octet-stream") -> str:
+        """Upload file content directly to S3.
+        
+        Args:
+            file_content: Raw file content as bytes
+            destination_path: S3 destination path
+            content_type: MIME type of the file
+            
+        Returns:
+            str: S3 URI of uploaded file
+        """
+        try:
+            self.s3_client.put_object(
+                Bucket=self.bucket_name,
+                Key=destination_path,
+                Body=file_content,
+                ContentType=content_type
+            )
+            return f"s3://{self.bucket_name}/{destination_path}"
+        except NoCredentialsError:
+            raise BlobStorageException("AWS credentials not found")
+        except ClientError as e:
+            raise BlobStorageException(f"S3 upload failed: {str(e)}")
+        except Exception as e:
+            raise BlobStorageException(f"Upload failed: {str(e)}")
+
     def upload_file(self, source_file_path: str, destination_path: str) -> str:
         try:
             if not os.path.exists(source_file_path):

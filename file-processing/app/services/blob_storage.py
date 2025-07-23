@@ -13,6 +13,20 @@ class BlobStorageProvider(ABC):
         pass
 
     @abstractmethod
+    def upload_file_content(self, file_content: bytes, destination_path: str, content_type: str = "application/octet-stream") -> str:
+        """Upload file content directly to blob storage.
+        
+        Args:
+            file_content: Raw file content as bytes
+            destination_path: Blob storage destination path
+            content_type: MIME type of the file
+            
+        Returns:
+            str: Blob storage URI of uploaded file
+        """
+        pass
+
+    @abstractmethod
     def download_file(self, blob_path: str, local_file_path: str) -> bool:
         """Download a file from blob storage to local filesystem.
         
