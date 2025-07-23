@@ -1,5 +1,5 @@
 SELECT 
-    id, base_id, scraping_log_url, cleaning_log_url
+    id, base_id, agency_name, url, scraping_log_url, cleaning_log_url
 FROM source_run_report 
 WHERE base_id = :base_id::UUID
   AND updated_at = (

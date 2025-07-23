@@ -9,7 +9,8 @@ SELECT
     id, base_id, agency_base_id, agency_name, url, errors, 
     scraping_started_at, scraping_finished_at,
     :page as page,
-    CEIL(COUNT(*) OVER () / :page_size::DECIMAL) AS total_pages
+    CEIL(COUNT(*) OVER () / :page_size::DECIMAL) AS total_pages,
+    (COUNT(*) OVER ()) AS total
 FROM latest_reports
 WHERE is_deleted = FALSE
 ORDER BY 

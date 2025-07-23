@@ -183,10 +183,10 @@ export const deleteFile = async (fileId: string): Promise<void> => {
  * Get download URL for a file
  */
 export const getFileDownloadUrl = async (
-  fileId: string
+  path: string
 ): Promise<{ downloadUrl: string; expiresAt: string }> => {
-  const response = await apiDev.get('/source-file/get-download-url', {
-    params: { path: fileId },
+  const response = await apiDev.get('/get-download-url', {
+    params: { path },
   });
   return response.data.response;
 };

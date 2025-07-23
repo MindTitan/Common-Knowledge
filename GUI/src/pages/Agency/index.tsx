@@ -1,4 +1,3 @@
-// Agency.tsx - Agency List Component with Delete Integration
 import { FC, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';

@@ -1,0 +1,31 @@
+declaration:
+  call: declare
+  version: 0.1
+  description: "Create multiple source run pages in bulk"
+  method: post
+  accepts: json
+  returns: json
+  namespace: logs
+  allowlist:
+    body:
+      - field: pages
+        type: array
+        description: "Array of page objects to create"
+
+extractRequestData:
+  assign:
+    pages: "${incoming.body.pages}"
+
+createSourceRunPages:
+  call: http.post
+  args:
+    url: "[#CKB_RESQL]/source_run_page/create_source_run_pages"
+    headers:
+      type: json
+    body:
+      pages: ${pages}
+  result: res
+
+returnSuccess:
+  return: ${res.response.body}
+  next: end

@@ -8,7 +8,8 @@ WITH latest_run_pages AS (
 SELECT 
     id, base_id, source_run_report_base_id, url, error_type, error_message, scraped_at,
     :page as page,
-    CEIL(COUNT(*) OVER () / :page_size::DECIMAL) AS total_pages
+    CEIL(COUNT(*) OVER () / :page_size::DECIMAL) AS total_pages,
+    (COUNT(*) OVER ()) AS total
 FROM latest_run_pages
 WHERE is_deleted = FALSE
 ORDER BY 
