@@ -63,6 +63,127 @@ def update_download_task(task_id: str, **updates) -> None:
         _download_tasks[task_id]["updated_at"] = datetime.now()
 
 
+def process_single_file_download(file_item: FileDownloadItem) -> FileDownloadResult:
+    """Process download of a single file."""
+    try:
+        # Clean the s3_path - remove s3:// prefix if present
+        clean_s3_path = file_item.s3_path
+        if clean_s3_path.startswith('s3://'):
+            # Extract key from s3://bucket/key format
+            parts = clean_s3_path.replace('s3://', '').split('/', 1)
+            if len(parts) > 1:
+                clean_s3_path = parts[1]
+            else:
+                clean_s3_path = parts[0]
+        
+        # Use volume path configuration
+        local_path_str = f"{VOLUME_PATH}/{file_item.local_path}"
+        local_path = Path(local_path_str)
+        
+        # Ensure local directory exists
+        local_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # Download file from blob storage to local path
+        success = storage_provider.download_file(clean_s3_path, str(local_path))
+        
+        if success:
+            return FileDownloadResult(
+                s3_path=file_item.s3_path,
+                local_path=str(local_path),
+                status="success",
+                file_size=local_path.stat().st_size if local_path.exists() else 0,
+                is_folder=False,
+                files_count=1
+            )
+        else:
+            return FileDownloadResult(
+                s3_path=file_item.s3_path,
+                local_path=str(local_path),
+                status="failed",
+                error_message="Download failed - file may not exist",
+                is_folder=False,
+                files_count=0
+            )
+            
+    except Exception as e:
+        error_msg = f"Unexpected error: {str(e)}"
+        return FileDownloadResult(
+            s3_path=file_item.s3_path,
+            local_path=f"{VOLUME_PATH}/{file_item.local_path}",
+            status="failed",
+            error_message=error_msg,
+            is_folder=False,
+            files_count=0
+        )
+
+
+def process_folder_download(file_item: FileDownloadItem) -> FileDownloadResult:
+    """Process download of a folder (all files within it)."""
+    try:
+        # Clean the s3_path - remove s3:// prefix if present
+        clean_s3_path = file_item.s3_path
+        if clean_s3_path.startswith('s3://'):
+            # Extract key from s3://bucket/key format
+            parts = clean_s3_path.replace('s3://', '').split('/', 1)
+            if len(parts) > 1:
+                clean_s3_path = parts[1]
+            else:
+                clean_s3_path = parts[0]
+        
+        # Use volume path configuration
+        local_folder_path = f"{VOLUME_PATH}/{file_item.local_path}"
+        
+        # Ensure local directory exists
+        Path(local_folder_path).mkdir(parents=True, exist_ok=True)
+        
+        # Download entire folder from blob storage
+        successful_count, failed_count, download_results = storage_provider.download_folder(
+            clean_s3_path, local_folder_path
+        )
+        
+        total_files = successful_count + failed_count
+        
+        if failed_count == 0:
+            return FileDownloadResult(
+                s3_path=file_item.s3_path,
+                local_path=local_folder_path,
+                status="success",
+                file_size=sum(os.path.getsize(result[1]) for result in download_results if result[2] and os.path.exists(result[1])),
+                is_folder=True,
+                files_count=total_files
+            )
+        elif successful_count > 0:
+            return FileDownloadResult(
+                s3_path=file_item.s3_path,
+                local_path=local_folder_path,
+                status="success",  # Partial success is still success
+                error_message=f"Partial download: {failed_count} of {total_files} files failed",
+                file_size=sum(os.path.getsize(result[1]) for result in download_results if result[2] and os.path.exists(result[1])),
+                is_folder=True,
+                files_count=successful_count
+            )
+        else:
+            return FileDownloadResult(
+                s3_path=file_item.s3_path,
+                local_path=local_folder_path,
+                status="failed",
+                error_message=f"All {total_files} files failed to download" if total_files > 0 else "No files found in folder",
+                is_folder=True,
+                files_count=0
+            )
+            
+    except Exception as e:
+        error_msg = f"Folder download error: {str(e)}"
+        return FileDownloadResult(
+            s3_path=file_item.s3_path,
+            local_path=f"{VOLUME_PATH}/{file_item.local_path}",
+            status="failed",
+            error_message=error_msg,
+            is_folder=True,
+            files_count=0
+        )
+
+
 def process_download_task(task_id: str) -> None:
     """Process a download task by downloading all files."""
     task_data = _download_tasks.get(task_id)
@@ -79,55 +200,32 @@ def process_download_task(task_id: str) -> None:
         
         for file_item in task_data["files"]:
             try:
-                # Clean the s3_path - remove s3:// prefix if present
-                clean_s3_path = file_item.s3_path
-                if clean_s3_path.startswith('s3://'):
-                    # Extract key from s3://bucket/key format
-                    parts = clean_s3_path.replace('s3://', '').split('/', 1)
-                    if len(parts) > 1:
-                        clean_s3_path = parts[1]
-                    else:
-                        clean_s3_path = parts[0]
-                
-                # Use volume path configuration
-                local_path_str = f"{VOLUME_PATH}/{file_item.local_path}"
-                local_path = Path(local_path_str)
-                
-                # Ensure local directory exists
-                local_path.parent.mkdir(parents=True, exist_ok=True)
-                
-                # Download file from blob storage to local path
-                success = storage_provider.download_file(clean_s3_path, str(local_path))
-                
-                if success:
-                    results.append(FileDownloadResult(
-                        s3_path=file_item.s3_path,
-                        local_path=str(local_path),
-                        status="success",
-                        file_size=local_path.stat().st_size if local_path.exists() else 0
-                    ))
-                    successful_downloads += 1
-                    logger.info(f"Successfully downloaded {file_item.s3_path} to {local_path}")
+                if file_item.is_folder:
+                    result = process_folder_download(file_item)
+                    logger.info(f"Processed folder download {file_item.s3_path}: {result.status}")
                 else:
-                    results.append(FileDownloadResult(
-                        s3_path=file_item.s3_path,
-                        local_path=str(local_path),
-                        status="failed",
-                        error_message="Download failed - file may not exist"
-                    ))
+                    result = process_single_file_download(file_item)
+                    logger.info(f"Processed file download {file_item.s3_path}: {result.status}")
+                
+                results.append(result)
+                
+                if result.status == "success":
+                    successful_downloads += 1
+                else:
                     failed_downloads += 1
-                    logger.error(f"Failed to download {file_item.s3_path}")
                     
             except Exception as e:
-                error_msg = f"Unexpected error: {str(e)}"
+                error_msg = f"Unexpected error processing {file_item.s3_path}: {str(e)}"
                 results.append(FileDownloadResult(
                     s3_path=file_item.s3_path,
                     local_path=f"{VOLUME_PATH}/{file_item.local_path}",
                     status="failed",
-                    error_message=error_msg
+                    error_message=error_msg,
+                    is_folder=file_item.is_folder,
+                    files_count=0
                 ))
                 failed_downloads += 1
-                logger.error(f"Failed to download {file_item.s3_path}: {error_msg}")
+                logger.error(error_msg)
         
         # Update task with final results
         update_download_task(
@@ -313,66 +411,32 @@ def download_files_to_volume(request: DownloadToVolumeRequest) -> DownloadToVolu
     
     for file_item in request.files:
         try:
-            # Clean the s3_path - remove s3:// prefix if present
-            clean_s3_path = file_item.s3_path
-            if clean_s3_path.startswith('s3://'):
-                # Extract key from s3://bucket/key format
-                parts = clean_s3_path.replace('s3://', '').split('/', 1)
-                if len(parts) > 1:
-                    clean_s3_path = parts[1]
-                else:
-                    clean_s3_path = parts[0]
-            
-            # Use volume path configuration
-            local_path_str = f"{VOLUME_PATH}/{file_item.local_path}"
-            local_path = Path(local_path_str)
-            
-            # Ensure local directory exists
-            local_path.parent.mkdir(parents=True, exist_ok=True)
-            
-            # Download file from blob storage to local path
-            success = storage_provider.download_file(clean_s3_path, str(local_path))
-            
-            if success:
-                results.append(FileDownloadResult(
-                    s3_path=file_item.s3_path,
-                    local_path=str(local_path),
-                    status="success",
-                    file_size=local_path.stat().st_size if local_path.exists() else 0
-                ))
-                successful_downloads += 1
-                logger.info(f"Successfully downloaded {file_item.s3_path} to {local_path}")
+            if file_item.is_folder:
+                result = process_folder_download(file_item)
+                logger.info(f"Processed folder download {file_item.s3_path}: {result.status}")
             else:
-                results.append(FileDownloadResult(
-                    s3_path=file_item.s3_path,
-                    local_path=str(local_path),
-                    status="failed",
-                    error_message="Download failed - file may not exist"
-                ))
-                failed_downloads += 1
-                logger.error(f"Failed to download {file_item.s3_path}")
-                
-        except BlobStorageException as e:
-            error_msg = f"Blob storage error: {str(e)}"
-            results.append(FileDownloadResult(
-                s3_path=file_item.s3_path,
-                local_path=f"{VOLUME_PATH}/{file_item.local_path}",
-                status="failed",
-                error_message=error_msg
-            ))
-            failed_downloads += 1
-            logger.error(f"Failed to download {file_item.s3_path}: {error_msg}")
+                result = process_single_file_download(file_item)
+                logger.info(f"Processed file download {file_item.s3_path}: {result.status}")
             
+            results.append(result)
+            
+            if result.status == "success":
+                successful_downloads += 1
+            else:
+                failed_downloads += 1
+                
         except Exception as e:
-            error_msg = f"Unexpected error: {str(e)}"
+            error_msg = f"Unexpected error processing {file_item.s3_path}: {str(e)}"
             results.append(FileDownloadResult(
                 s3_path=file_item.s3_path,
                 local_path=f"{VOLUME_PATH}/{file_item.local_path}",
                 status="failed",
-                error_message=error_msg
+                error_message=error_msg,
+                is_folder=file_item.is_folder,
+                files_count=0
             ))
             failed_downloads += 1
-            logger.error(f"Failed to download {file_item.s3_path}: {error_msg}")
+            logger.error(error_msg)
     
     return DownloadToVolumeResponse(
         total_files=len(request.files),

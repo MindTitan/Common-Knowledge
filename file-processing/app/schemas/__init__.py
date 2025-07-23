@@ -52,6 +52,7 @@ class UploadUrlResponse(BaseModel):
 class FileDownloadItem(BaseModel):
     s3_path: str
     local_path: str
+    is_folder: bool = False
 
 class CallbackRequest(BaseModel):
     url: str
@@ -69,6 +70,8 @@ class FileDownloadResult(BaseModel):
     status: str  # "success" or "failed"
     file_size: Optional[int] = None
     error_message: Optional[str] = None
+    is_folder: bool = False
+    files_count: Optional[int] = None
 
 class DownloadToVolumeResponse(BaseModel):
     total_files: int

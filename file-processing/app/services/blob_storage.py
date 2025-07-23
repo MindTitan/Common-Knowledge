@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 
 class BlobStorageException(Exception):
@@ -22,6 +22,32 @@ class BlobStorageProvider(ABC):
             
         Returns:
             bool: True if download was successful, False otherwise
+        """
+        pass
+
+    @abstractmethod
+    def download_folder(self, s3_prefix: str, local_folder_path: str) -> Tuple[int, int, List[Tuple[str, str, bool, Optional[str]]]]:
+        """Download all files from a blob storage folder to local filesystem.
+        
+        Args:
+            s3_prefix: Blob storage prefix/folder path
+            local_folder_path: Local folder where files should be saved
+            
+        Returns:
+            Tuple of (successful_count, failed_count, results)
+            Results is list of (blob_key, local_path, success, error_message)
+        """
+        pass
+
+    @abstractmethod
+    def list_folder_files(self, s3_prefix: str) -> List[Tuple[str, int]]:
+        """List all files in a blob storage folder/prefix.
+        
+        Args:
+            s3_prefix: Blob storage prefix/folder path
+            
+        Returns:
+            List of tuples containing (file_key, file_size)
         """
         pass
 

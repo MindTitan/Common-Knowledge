@@ -1,7 +1,7 @@
 import boto3
 import os
 from datetime import datetime, timedelta, timezone
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from botocore.exceptions import ClientError, NoCredentialsError
 from app.services.blob_storage import BlobStorageProvider, BlobStorageException
 from app.core.config import settings
@@ -102,6 +102,106 @@ class S3Provider(BlobStorageProvider):
                 raise BlobStorageException(f"S3 download failed: {str(e)}")
         except Exception as e:
             raise BlobStorageException(f"Download failed: {str(e)}")
+
+    def list_folder_files(self, s3_prefix: str) -> List[Tuple[str, int]]:
+        """List all files in an S3 folder/prefix.
+        
+        Args:
+            s3_prefix: S3 prefix/folder path
+            
+        Returns:
+            List of tuples containing (file_key, file_size)
+        """
+        try:
+            files = []
+            paginator = self.s3_client.get_paginator('list_objects_v2')
+            
+            # Ensure prefix ends with / for proper folder listing
+            if s3_prefix and not s3_prefix.endswith('/'):
+                s3_prefix += '/'
+            
+            page_iterator = paginator.paginate(
+                Bucket=self.bucket_name,
+                Prefix=s3_prefix
+            )
+            
+            for page in page_iterator:
+                if 'Contents' in page:
+                    for obj in page['Contents']:
+                        # Skip the folder itself and only include actual files
+                        if not obj['Key'].endswith('/'):
+                            files.append((obj['Key'], obj['Size']))
+            
+            return files
+            
+        except NoCredentialsError:
+            raise BlobStorageException("AWS credentials not found")
+        except ClientError as e:
+            raise BlobStorageException(f"Failed to list folder contents: {str(e)}")
+        except Exception as e:
+            raise BlobStorageException(f"Failed to list folder contents: {str(e)}")
+
+    def download_folder(self, s3_prefix: str, local_folder_path: str) -> Tuple[int, int, List[Tuple[str, str, bool, Optional[str]]]]:
+        """Download all files from an S3 folder to local filesystem.
+        
+        Args:
+            s3_prefix: S3 prefix/folder path
+            local_folder_path: Local folder where files should be saved
+            
+        Returns:
+            Tuple of (successful_count, failed_count, results)
+            Results is list of (s3_key, local_path, success, error_message)
+        """
+        try:
+            # List all files in the folder
+            files = self.list_folder_files(s3_prefix)
+            
+            if not files:
+                return 0, 0, []
+            
+            successful_downloads = 0
+            failed_downloads = 0
+            results = []
+            
+            # Ensure prefix ends with / for proper path handling
+            clean_prefix = s3_prefix
+            if clean_prefix and not clean_prefix.endswith('/'):
+                clean_prefix += '/'
+            
+            for s3_key, file_size in files:
+                try:
+                    # Calculate relative path by removing the prefix
+                    relative_path = s3_key[len(clean_prefix):] if clean_prefix else s3_key
+                    local_file_path = os.path.join(local_folder_path, relative_path)
+                    
+                    # Ensure local directory exists
+                    os.makedirs(os.path.dirname(local_file_path), exist_ok=True)
+                    
+                    # Download the file
+                    self.s3_client.download_file(
+                        self.bucket_name,
+                        s3_key,
+                        local_file_path
+                    )
+                    
+                    # Verify download
+                    if os.path.exists(local_file_path):
+                        results.append((s3_key, local_file_path, True, None))
+                        successful_downloads += 1
+                    else:
+                        results.append((s3_key, local_file_path, False, "File not found after download"))
+                        failed_downloads += 1
+                        
+                except Exception as e:
+                    error_msg = f"Failed to download {s3_key}: {str(e)}"
+                    local_file_path = os.path.join(local_folder_path, s3_key[len(clean_prefix):] if clean_prefix else s3_key)
+                    results.append((s3_key, local_file_path, False, error_msg))
+                    failed_downloads += 1
+            
+            return successful_downloads, failed_downloads, results
+            
+        except Exception as e:
+            raise BlobStorageException(f"Failed to download folder: {str(e)}")
 
     def generate_upload_urls(self, paths: List[str], content_type: Optional[str] = None, expires_in: Optional[int] = None) -> List[tuple[str, str, datetime]]:
         """Generate presigned upload URLs for multiple blob paths."""
