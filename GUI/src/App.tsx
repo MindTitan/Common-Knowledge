@@ -1,6 +1,7 @@
-import { FC } from 'react';
+import { FC, useEffect } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { useCookies } from 'react-cookie';
 
 import { CKBLayout } from 'components';
 import useStore from 'store';
@@ -13,11 +14,35 @@ import Settings from 'pages/Settings';
 import Reports from 'pages/Reports';
 import Report from 'pages/Reports/Report';
 import AddAgency from 'pages/Agency/SaveAgency';
-import { useCookies } from 'react-cookie';
 import './locale/et_EE';
 
 const customJwtCookieKey = 'customJwtCookie';
+
 const App: FC = () => {
+  const userInfo = useStore((state) => state.userInfo);
+  const [_, setCookie] = useCookies([customJwtCookieKey]);
+
+  // JWT expiration check logic moved from Header
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const expirationTimeStamp = localStorage.getItem('exp');
+      if (
+        expirationTimeStamp !== 'null' &&
+        expirationTimeStamp !== null &&
+        expirationTimeStamp !== undefined
+      ) {
+        const expirationDate = new Date(parseInt(expirationTimeStamp) ?? '');
+        const currentDate = new Date(Date.now());
+        if (expirationDate < currentDate) {
+          localStorage.removeItem('exp');
+          window.location.href =
+            import.meta.env.REACT_APP_CUSTOMER_SERVICE_LOGIN;
+        }
+      }
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [userInfo]);
+
   useQuery<{
     data: { custom_jwt_userinfo: UserInfo };
   }>({
@@ -27,7 +52,6 @@ const App: FC = () => {
       return useStore.getState().setUserInfo(res.response);
     },
   });
-  const [_, setCookie] = useCookies([customJwtCookieKey]);
 
   return (
     <Routes>
