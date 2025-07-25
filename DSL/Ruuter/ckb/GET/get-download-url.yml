@@ -30,19 +30,19 @@ returnError:
 requestDownloadUrl:
   call: http.post
   args:
-    url: "[#CKB_FILE_MANAGER]/download-url"
+    url: "[#CKB_FILE_MANAGER]/download-urls"
     headers:
       Content-Type: application/json
       accept: application/json
     body:
-      path: ${file_path}
+      paths: ${[file_path]}
   result: downloadResponse
 
 prepareResponse:
   assign:
     response:
-      downloadUrl: "${downloadResponse.response.body.download_url}"
-      expiresAt: "${downloadResponse.response.body.expires_at}"
+      downloadUrl: "${downloadResponse.response.body.download_urls?.[0]?.download_url}"
+      expiresAt: "${downloadResponse.response.body.download_urls?.[0]?.expires_at}"
 
 returnResponse:
   return: ${response}

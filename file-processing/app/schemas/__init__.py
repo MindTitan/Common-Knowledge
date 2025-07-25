@@ -28,11 +28,16 @@ class FileContentUploadResponse(BaseModel):
     file_size: int
 
 class DownloadFileRequest(BaseModel):
-    path: str
+    paths: List[str]  
 
-class DownloadFileResponse(BaseModel):
+class DownloadUrlItem(BaseModel):
+    path: str
     download_url: str
     expires_at: datetime
+    error_message: Optional[str] = None
+
+class DownloadFileResponse(BaseModel):
+    download_urls: List[DownloadUrlItem]
 
 class UploadTaskStatusResponse(BaseModel):
     task_id: str

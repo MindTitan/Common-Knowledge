@@ -6,6 +6,7 @@ from typing import List, Dict, Optional
 from pathlib import Path
 from datetime import datetime, timedelta
 from app.schemas import (
+    DownloadUrlItem,
     DownloadFileResponse, 
     DownloadToVolumeRequest, 
     DownloadToVolumeResponse, 
@@ -384,20 +385,36 @@ def delete_files_from_volume(request: DeleteFromVolumeRequest) -> DeleteFromVolu
     )
 
 
-def generate_download_url(blob_storage_path: str) -> DownloadFileResponse:
-    """Generate a presigned download URL for a file in blob storage."""
-    try:
-        download_url, expires_at = storage_provider.generate_download_url(
-            blob_storage_path, 
-        )
-        return DownloadFileResponse(
-            download_url=download_url,
-            expires_at=expires_at
-        )
-    except BlobStorageException as e:
-        raise ValueError(f"Blob storage error: {str(e)}")
-    except Exception as e:
-        raise ValueError(f"Failed to generate download URL: {str(e)}")
+def generate_download_urls(paths: List[str]) -> DownloadFileResponse:
+    """Generate presigned download URLs for multiple files in blob storage."""
+    download_url_items = []
+    
+    for path in paths:
+        try:
+            download_url, expires_at = storage_provider.generate_download_url(path)
+            download_url_items.append(DownloadUrlItem(
+                path=path,
+                download_url=download_url,
+                expires_at=expires_at
+            ))
+        except BlobStorageException as e:
+            # Include failed paths in response with error message
+            download_url_items.append(DownloadUrlItem(
+                path=path,
+                download_url="",
+                expires_at=datetime.now(),
+                error_message=f"Blob storage error: {str(e)}"
+            ))
+        except Exception as e:
+            download_url_items.append(DownloadUrlItem(
+                path=path,
+                download_url="",
+                expires_at=datetime.now(),
+                error_message=f"Failed to generate download URL: {str(e)}"
+            ))
+    
+    return DownloadFileResponse(download_urls=download_url_items)
+
 
 
 def download_files_to_volume(request: DownloadToVolumeRequest) -> DownloadToVolumeResponse:

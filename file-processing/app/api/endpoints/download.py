@@ -14,17 +14,17 @@ from app.services import download_service
 router = APIRouter()
 
 
-@router.post("/download-url", response_model=DownloadFileResponse)
-def generate_download_url(request: DownloadFileRequest) -> DownloadFileResponse:
-    """Generate a presigned download URL for a file in blob storage."""
+@router.post("/download-urls", response_model=DownloadFileResponse)
+def generate_download_urls(request: DownloadFileRequest) -> DownloadFileResponse:
+    print(request)
+    """Generate presigned download URLs for multiple files in blob storage."""
     try:
-        return download_service.generate_download_url(request.path)
+        return download_service.generate_download_urls(request.paths)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to generate download URL: {str(e)}")
-
-
+        raise HTTPException(status_code=500, detail=f"Failed to generate download URLs: {str(e)}")
+    
 @router.post("/download-files-to-volume", response_model=DownloadToVolumeResponse)
 def download_files_to_volume(request: DownloadToVolumeRequest) -> DownloadToVolumeResponse:
     """Download multiple files from blob storage to local volume (synchronous)."""
