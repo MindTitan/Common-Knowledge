@@ -5,7 +5,7 @@ declaration:
   method: get
   accepts: json
   returns: json
-  namespace: agency
+  namespace: client
   allowlist:
     params:
       - field: clientIds
