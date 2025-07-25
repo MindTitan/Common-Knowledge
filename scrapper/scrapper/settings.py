@@ -24,7 +24,7 @@ USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, li
 ROBOTSTXT_OBEY = True
 
 # Configure maximum concurrent requests performed by Scrapy (default: 16)
-#CONCURRENT_REQUESTS = 32
+CONCURRENT_REQUESTS = 1
 
 # Configure a delay for requests for the same website (default: 0)
 # See https://docs.scrapy.org/en/latest/topics/settings.html#download-delay
@@ -102,11 +102,13 @@ FEED_EXPORT_ENCODING = "utf-8"
 ALLOWED_FILETYPES = os.environ.get('SUPPORTED_TYPES', '.html,.docx,.doc,.pdf').split(',')
 SCRAPED_DIRECTORY = os.environ.get('SCRAPED_DIRECTORY', "/scrapped-data")
 RUUTER_INTERNAL = os.environ.get('RUUTER_INTERNAL', "http://ruuter-internal:8089")
-DOWNLOAD_DELAY = 0.5
+DOWNLOAD_DELAY = 0.1
 
 DOWNLOAD_HANDLERS = {
     "http": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
     "https": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
 }
-
+PLAYWRIGHT_DEFAULT_NAVIGATION_TIMEOUT = 10_000
 TWISTED_REACTOR = "twisted.internet.asyncioreactor.AsyncioSelectorReactor"
+PLAYWRIGHT_MAX_CONTEXTS = 1
+

@@ -20,3 +20,7 @@ class SpecifiedLinksScrapeTask(BaseObject):
 
 class SitemapCollectScrapperTask(BaseObject):
     url: HttpUrl
+
+
+class EntireSourceScrapperTask(BaseObject):
+    pass

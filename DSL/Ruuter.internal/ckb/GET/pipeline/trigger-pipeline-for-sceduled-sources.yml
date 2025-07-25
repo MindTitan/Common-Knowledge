@@ -53,25 +53,25 @@ getAgencyForSource:
       base_id: ${sourceToRun.response.body[0].agencyBaseId}
   result: agency
 
-getSourceFilesForSource:
-  maxRecursions: 999
-  call: http.get
-  args:
-    url: "[#CKB_RESQL]/source_file/update_source_files_to_scraping_by_source_base_id"
-    query:
-      source_base_id: ${sourceToRun.response.body[0].baseId}
-  result: sourceFiles
+#getSourceFilesForSource:
+#  maxRecursions: 999
+#  call: http.get
+#  args:
+#    url: "[#CKB_RESQL]/source_file/update_source_files_to_scraping_by_source_base_id"
+#    query:
+#      source_base_id: ${sourceToRun.response.body[0].baseId}
+#  result: sourceFiles
 
 triggerPipelineForSource:
   maxRecursions: 999
-  template: "[#CKB_PROJECT_LAYER]/pipeline/trigger-scrapper-single-defined-pages"
+  template: "[#CKB_PROJECT_LAYER]/pipeline/trigger-scrapper-entire-source"
   requestType: templates
   body:
     source_id: ${sourceToRun.response.body[0].baseId}
     source_name: ${sourceToRun.response.body[0].subsector}
     agency_id: ${sourceToRun.response.body[0].agencyBaseId}
     agency_name: ${agency.response.body[0].name}
-    source_files: ${sourceFiles.response.body}
+#    source_files: ${sourceFiles.response.body}
   result: res
   next: checkSourceToRunExists
 

@@ -105,6 +105,8 @@ services:
       - ./constants.ini:/app/constants.ini
     networks:
       - bykstack
+    ports:
+      - 8089:8089
     cpus: "0.5"
     mem_limit: "512M"
 

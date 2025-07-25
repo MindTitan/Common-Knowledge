@@ -1,7 +1,7 @@
 /*
 declaration:
   version: 0.1
-  description: "Get source_files by source id and mark them as running"
+  description: "Get source_file by source id and mark them as running"
   method: post
   returns: json
   namespace: scheduler
@@ -10,6 +10,9 @@ declaration:
       - field: source_base_id
         type: string
         description: "base id of source"
+      - field: reference_time
+        type: string
+        description: "fetch source files, scrapped before reference time"
   response:
     fields:
       - field: id
@@ -29,7 +32,8 @@ SELECT
         'source_file',
         'id', '::UUID', id::VARCHAR,
         ARRAY[
-            'status', '::SOURCE_FILE_STATUS_TYPE', 'scraping'
+            'status', '::SOURCE_FILE_STATUS_TYPE', 'scraping',
+            'updated_at', '::TIMESTAMP WITH TIME ZONE', NOW()::VARCHAR
         ]::VARCHAR[]
     ),
     base_id as id, url, original_data_hash as hash
@@ -42,4 +46,7 @@ WHERE (base_id, updated_at) IN (
     )
     AND is_excluded = FALSE
     AND is_deleted = FALSE
-    AND type = 'scraped_file';
+    AND type = 'scraped_file'
+    AND status = 'finished'::SOURCE_FILE_STATUS_TYPE
+    AND last_scraped_at < :reference_time::TIMESTAMP WITH TIME ZONE
+LIMIT 1;
