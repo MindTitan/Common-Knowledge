@@ -1,0 +1,29 @@
+declaration:
+  call: declare
+  version: 0.1
+  description: "Get a specific agency by base ID"
+  method: get
+  accepts: json
+  returns: json
+  namespace: agency
+  allowlist:
+    params:
+      - field: clientIds
+        type: string
+        description: "Base IDs of the agency to retrieve"
+
+extractRequestData:
+  assign:
+    clientIds: "${incoming.params.clientIds}"
+
+getAgenciesDataAvailable:
+  call: http.get
+  args:
+    url: "[#CKB_RESQL]/agency/list_agency_data_available"
+    query:
+      agencyIds: ${clientIds}
+  result: res
+
+returnSuccess:
+  return: ${res.response.body}
+  next: end
