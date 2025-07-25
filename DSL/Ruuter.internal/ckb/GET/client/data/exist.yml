@@ -1,7 +1,7 @@
 declaration:
   call: declare
   version: 0.1
-  description: "Get a specific agency by base ID"
+  description: "Check if data exists for clients"
   method: get
   accepts: json
   returns: json
@@ -10,7 +10,7 @@ declaration:
     params:
       - field: clientIds
         type: string
-        description: "Base IDs of the agency to retrieve"
+        description: "Base IDs of the clients"
 
 extractRequestData:
   assign:
