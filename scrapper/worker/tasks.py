@@ -4,7 +4,7 @@ import subprocess
 from celery import Celery
 
 from api.config import settings
-from api.models import SpecifiedLinksScrapeTask, SitemapCollectScrapperTask, EntireSourceScrapperTask
+from api.models import SpecifiedLinksScrapeTask, SitemapCollectScrapperTask, EntireSourceScrapperTask, EestiScrapperTask
 from worker.utils import un_json
 
 app = Celery('ckb', broker=settings.broker_url.unicode_string())
@@ -44,4 +44,13 @@ def entire_source_scrapped_task(task: EntireSourceScrapperTask):
     escaped_version = shlex.quote(dumped_version)
 
     p = subprocess.Popen(['python', 'run_entire_source_scrapper.py', escaped_version])
+    p.wait()
+
+@app.task
+@un_json(EestiScrapperTask)
+def eesti_scrapper_task(task: EestiScrapperTask):
+    dumped_version = task.model_dump_json()
+    escaped_version = shlex.quote(dumped_version)
+
+    p = subprocess.Popen(['python', 'run_eesti_scrapper.py', escaped_version])
     p.wait()

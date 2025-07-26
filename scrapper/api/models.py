@@ -24,3 +24,7 @@ class SitemapCollectScrapperTask(BaseObject):
 
 class EntireSourceScrapperTask(BaseObject):
     pass
+
+class EestiScrapperTask(BaseObject):
+    """Task for scraping all articles from Eesti.ee"""
+    pass
