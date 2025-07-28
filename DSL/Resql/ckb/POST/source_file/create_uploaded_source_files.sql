@@ -1,8 +1,9 @@
 INSERT INTO source_file (
-    source_base_id, base_id, file_name, subsector, original_data_url, type
+    source_base_id, agency_base_id, base_id, file_name, subsector, original_data_url, type
 )
 SELECT
     :source_id::UUID,
+    :agency_id::UUID,
     file_data.base_id::UUID,
     file_data.file_name,
     file_data.subsector,

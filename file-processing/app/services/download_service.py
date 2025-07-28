@@ -137,9 +137,9 @@ def process_folder_download(file_item: FileDownloadItem) -> FileDownloadResult:
         # Ensure local directory exists
         Path(local_folder_path).mkdir(parents=True, exist_ok=True)
         
-        # Download entire folder from blob storage
-        successful_count, failed_count, download_results = storage_provider.download_folder(
-            clean_s3_path, local_folder_path
+        # Download entire folder from blob storage (no exclusion filter for regular downloads)
+        successful_count, failed_count, download_results, _excluded_paths = storage_provider.download_folder(
+            clean_s3_path, local_folder_path, exclusion_filter=None
         )
         
         total_files = successful_count + failed_count

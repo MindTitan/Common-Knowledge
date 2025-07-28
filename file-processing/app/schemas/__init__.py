@@ -131,10 +131,11 @@ class DeleteFromVolumeResponse(BaseModel):
     failed_deletions: int
     results: List[FileDeleteResult]
 
-# New schemas for zip and upload functionality
+# Schemas for zip and upload functionality
 class FolderZipItem(BaseModel):
     s3_path: str  # Source folder path in S3
     s3_zip_path: str  # Destination zip file path in S3
+    excluded_folders: Optional[List[str]] = []  # List of subfolder names to exclude from this folder's zip
 
 class ZipAndUploadRequest(BaseModel):
     folders: List[FolderZipItem]
@@ -145,7 +146,8 @@ class FolderZipResult(BaseModel):
     s3_zip_path: str
     status: str  # "success" or "failed"
     zip_size: Optional[int] = None
-    files_count: Optional[int] = None
+    files_count: Optional[int] = None  # Total count of files and folders in the zip
+    excluded_subfolders: Optional[List[str]] = []  # List of subfolders that were excluded
     error_message: Optional[str] = None
 
 class ZipAndUploadResponse(BaseModel):

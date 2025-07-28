@@ -8,6 +8,9 @@ declaration:
   namespace: source-file
   allowlist:
     body:
+      - field: agency_id
+        type: string
+        description: "ID of the the agency"
       - field: source_id
         type: string
         description: "Source ID to associate files with"
@@ -30,13 +33,13 @@ declaration:
         type: string
         description: "When the source was scraped"
 
-
 addScrappedFile:
   call: http.post
   args:
     url: "[#CKB_RESQL]/source_file/create_scraped_source_file"
     body:
       source_base_id: ${incoming.body.source_id}
+      agency_base_id: ${incoming.body.agency_id}
       url: ${incoming.body.url}
       page_title: ${incoming.body.page_title}
       original_data_url: ${incoming.body.original_data_url}

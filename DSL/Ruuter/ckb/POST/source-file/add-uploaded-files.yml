@@ -8,6 +8,9 @@ declaration:
   namespace: source-file
   allowlist:
     body:
+      - field: agencyId
+        type: string
+        description: "ID of the agency"
       - field: sourceId
         type: string
         description: "Source ID to associate files with"
@@ -17,6 +20,7 @@ declaration:
 
 extractRequestData:
   assign:
+    agency_id: "${incoming.body.agencyId}"
     source_id: "${incoming.body.sourceId}"
     files: "${incoming.body.files}"
 
@@ -34,6 +38,7 @@ createUploadedSourceFiles:
     headers:
       type: json
     body:
+      agency_id: ${agency_id}
       source_id: ${source_id}
       files: ${files}
   result: createResult

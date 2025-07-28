@@ -175,10 +175,12 @@ export const uploadContentToS3 = async (
  * Register uploaded files in database
  */
 export const registerUploadedFiles = async (
+  agencyId: string,
   sourceId: string,
   files: RegisterUploadedFileRequest[]
 ): Promise<void> => {
   const response = await apiDev.post('/source-file/add-uploaded-files', {
+    agencyId: agencyId,
     sourceId: sourceId,
     files: files,
   });

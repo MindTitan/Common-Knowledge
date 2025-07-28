@@ -25,6 +25,25 @@ logger = logging.getLogger(__name__)
 _zip_tasks: Dict[str, dict] = {}
 
 
+def should_exclude_subfolder(relative_path: str, excluded_folders: List[str]) -> bool:
+    """Check if a subfolder should be excluded from the zip based on its relative path."""
+    if not excluded_folders:
+        return False
+    
+    # Normalize the relative path
+    normalized_path = relative_path.replace('\\', '/').strip('/')
+    
+    for excluded in excluded_folders:
+        normalized_excluded = excluded.replace('\\', '/').strip('/')
+        
+        # Check if the path starts with the excluded folder name
+        if (normalized_path == normalized_excluded or 
+            normalized_path.startswith(normalized_excluded + '/')):
+            return True
+    
+    return False
+
+
 def create_zip_task(folders: List[FolderZipItem], callback: Optional = None) -> str:
     """Create a new zip task in memory."""
     task_id = str(uuid.uuid4())
@@ -60,9 +79,9 @@ def update_zip_task(task_id: str, **updates) -> None:
 
 
 def process_single_folder_zip(folder_item: FolderZipItem) -> FolderZipResult:
-    """Process zipping of a single folder."""
+    """Process zipping of a single folder, excluding specified subfolders."""
+    
     temp_dir = None
-    temp_zip_path = None
     
     try:
         # Clean the s3_path - remove s3:// prefix if present
@@ -89,21 +108,25 @@ def process_single_folder_zip(folder_item: FolderZipItem) -> FolderZipResult:
         
         logger.info(f"Downloading folder {clean_s3_path} to temporary location {local_folder_path}")
         
-        # Download the entire folder from S3
-        successful_count, failed_count, download_results = storage_provider.download_folder(
-            clean_s3_path, local_folder_path
+        # Create exclusion filter function
+        def exclusion_filter(relative_path: str) -> bool:
+            return should_exclude_subfolder(relative_path, folder_item.excluded_folders or [])
+        
+        # Download the folder with exclusion filter
+        successful_count, failed_count, download_results, excluded_paths = storage_provider.download_folder(
+            clean_s3_path, local_folder_path, exclusion_filter
         )
         
-        total_files = successful_count + failed_count
+        # Extract unique excluded subfolders from excluded paths
+        excluded_subfolders_found = []
+        for excluded_path in excluded_paths:
+            excluded_subfolder = excluded_path.split('/')[0] if '/' in excluded_path else excluded_path
+            if excluded_subfolder not in excluded_subfolders_found:
+                excluded_subfolders_found.append(excluded_subfolder)
         
+        # If no files were downloaded, create an empty folder in the zip
         if successful_count == 0:
-            return FolderZipResult(
-                s3_path=folder_item.s3_path,
-                s3_zip_path=folder_item.s3_zip_path,
-                status="failed",
-                error_message=f"No files downloaded from folder. Total files found: {total_files}",
-                files_count=total_files
-            )
+            logger.info(f"No files found in {clean_s3_path}, creating zip with empty folder")
         
         # Create zip file in temp directory
         temp_zip_path = os.path.join(temp_dir, "folder.zip")
@@ -111,13 +134,36 @@ def process_single_folder_zip(folder_item: FolderZipItem) -> FolderZipResult:
         logger.info(f"Creating zip file {temp_zip_path} with {successful_count} files")
         
         with zipfile.ZipFile(temp_zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-            # Walk through all downloaded files and add them to zip
-            for root, dirs, files in os.walk(local_folder_path):
-                for file in files:
-                    file_path = os.path.join(root, file)
-                    # Calculate relative path within the zip
-                    arcname = os.path.relpath(file_path, local_folder_path)
-                    zipf.write(file_path, arcname)
+            # Get the parent folder name from s3_path to use as root in zip
+            s3_path_parts = folder_item.s3_path.rstrip('/').split('/')
+            parent_folder_name = s3_path_parts[-1]  # Last part is the folder name
+            
+            if successful_count == 0:
+                # Create empty folder entry in zip
+                zipinfo = zipfile.ZipInfo(parent_folder_name + '/')
+                zipinfo.external_attr = 0o755 << 16
+                zipf.writestr(zipinfo, '')
+            else:
+                # Walk through all downloaded files and add them to zip
+                for root, dirs, files in os.walk(local_folder_path):
+                    # Add files
+                    for file in files:
+                        file_path = os.path.join(root, file)
+                        relative_path = os.path.relpath(file_path, local_folder_path)
+                        # Prepend parent folder name
+                        arcname = os.path.join(parent_folder_name, relative_path).replace('\\', '/')
+                        zipf.write(file_path, arcname)
+                    
+                    # Add empty directories
+                    for dir_name in dirs:
+                        dir_path = os.path.join(root, dir_name)
+                        if not os.listdir(dir_path):  # Only add if empty
+                            relative_path = os.path.relpath(dir_path, local_folder_path)
+                            # Prepend parent folder name
+                            arcname = os.path.join(parent_folder_name, relative_path).replace('\\', '/') + '/'
+                            zipinfo = zipfile.ZipInfo(arcname)
+                            zipinfo.external_attr = 0o755 << 16
+                            zipf.writestr(zipinfo, '')
         
         # Get zip file size
         zip_size = os.path.getsize(temp_zip_path)
@@ -134,7 +180,8 @@ def process_single_folder_zip(folder_item: FolderZipItem) -> FolderZipResult:
             s3_zip_path=folder_item.s3_zip_path,
             status="success",
             zip_size=zip_size,
-            files_count=successful_count
+            files_count=max(successful_count, 1),  # At least 1 for the empty folder case
+            excluded_subfolders=excluded_subfolders_found
         )
         
     except BlobStorageException as e:
@@ -144,7 +191,8 @@ def process_single_folder_zip(folder_item: FolderZipItem) -> FolderZipResult:
             s3_zip_path=folder_item.s3_zip_path,
             status="failed",
             error_message=error_msg,
-            files_count=0
+            files_count=0,
+            excluded_subfolders=[]
         )
     except Exception as e:
         error_msg = f"Unexpected error: {str(e)}"
@@ -153,7 +201,8 @@ def process_single_folder_zip(folder_item: FolderZipItem) -> FolderZipResult:
             s3_zip_path=folder_item.s3_zip_path,
             status="failed",
             error_message=error_msg,
-            files_count=0
+            files_count=0,
+            excluded_subfolders=[]
         )
     finally:
         # Cleanup temporary directory
@@ -198,7 +247,8 @@ def process_zip_task(task_id: str) -> None:
                     s3_zip_path=folder_item.s3_zip_path,
                     status="failed",
                     error_message=error_msg,
-                    files_count=0
+                    files_count=0,
+                    excluded_subfolders=[]
                 ))
                 failed_zips += 1
                 logger.error(error_msg)
@@ -320,7 +370,8 @@ def zip_and_upload_folders(request: ZipAndUploadRequest) -> ZipAndUploadResponse
                 s3_zip_path=folder_item.s3_zip_path,
                 status="failed",
                 error_message=error_msg,
-                files_count=0
+                files_count=0,
+                excluded_subfolders=[]
             ))
             failed_zips += 1
             logger.error(error_msg)

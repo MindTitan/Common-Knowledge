@@ -83,6 +83,7 @@ CREATE TABLE source_file (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     base_id UUID NOT NULL DEFAULT uuid_generate_v4(),
     source_base_id UUID NOT NULL,
+    agency_base_id UUID NOT NULL,
     url TEXT,
     page_title TEXT,
     original_data_url TEXT,

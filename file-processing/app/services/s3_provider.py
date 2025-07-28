@@ -1,7 +1,7 @@
 import boto3
 import os
 from datetime import datetime, timedelta, timezone
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Callable
 from botocore.exceptions import ClientError, NoCredentialsError
 from app.services.blob_storage import BlobStorageProvider, BlobStorageException
 from app.core.config import settings
@@ -112,11 +112,7 @@ class S3Provider(BlobStorageProvider):
                 local_file_path
             )
             
-            # Verify the file was downloaded
-            if os.path.exists(local_file_path) and os.path.getsize(local_file_path) > 0:
-                return True
-            else:
-                return False
+            return os.path.exists(local_file_path)
                 
         except NoCredentialsError:
             raise BlobStorageException("AWS credentials not found")
@@ -154,7 +150,7 @@ class S3Provider(BlobStorageProvider):
             for page in page_iterator:
                 if 'Contents' in page:
                     for obj in page['Contents']:
-                        # Skip the folder itself and only include actual files
+                        # Skip folder markers, only include actual files
                         if not obj['Key'].endswith('/'):
                             files.append((obj['Key'], obj['Size']))
             
@@ -167,70 +163,155 @@ class S3Provider(BlobStorageProvider):
         except Exception as e:
             raise BlobStorageException(f"Failed to list folder contents: {str(e)}")
 
-    def download_folder(self, s3_prefix: str, local_folder_path: str) -> Tuple[int, int, List[Tuple[str, str, bool, Optional[str]]]]:
-        """Download all files from an S3 folder to local filesystem.
+    def download_folder(self, s3_prefix: str, local_folder_path: str, 
+                       exclusion_filter: Optional[Callable[[str], bool]] = None) -> Tuple[int, int, List[Tuple[str, str, bool, Optional[str]]], List[str]]:
+        """Download all files from an S3 folder to local filesystem with optional exclusion filter.
         
         Args:
             s3_prefix: S3 prefix/folder path
             local_folder_path: Local folder where files should be saved
+            exclusion_filter: Optional function that takes relative path and returns True if file should be excluded
             
         Returns:
-            Tuple of (successful_count, failed_count, results)
+            Tuple of (successful_count, failed_count, results, excluded_paths)
             Results is list of (s3_key, local_path, success, error_message)
+            Excluded_paths is list of relative paths that were excluded
         """
         try:
-            # List all files in the folder
-            files = self.list_folder_files(s3_prefix)
+            # List all objects (files AND folder markers) in the folder
+            all_objects = []
+            paginator = self.s3_client.get_paginator('list_objects_v2')
             
-            if not files:
-                return 0, 0, []
-            
-            successful_downloads = 0
-            failed_downloads = 0
-            results = []
-            
-            # Ensure prefix ends with / for proper path handling
+            # Ensure prefix ends with / for proper folder listing
             clean_prefix = s3_prefix
             if clean_prefix and not clean_prefix.endswith('/'):
                 clean_prefix += '/'
             
-            for s3_key, file_size in files:
+            page_iterator = paginator.paginate(
+                Bucket=self.bucket_name,
+                Prefix=clean_prefix
+            )
+            
+            for page in page_iterator:
+                if 'Contents' in page:
+                    for obj in page['Contents']:
+                        all_objects.append((obj['Key'], obj['Size'], obj['LastModified']))
+            
+            if not all_objects:
+                return 0, 0, [], []
+            
+            successful_downloads = 0
+            failed_downloads = 0
+            results = []
+            excluded_paths = []
+            
+            # Keep track of all parent directories that should exist
+            # even if their contents are excluded
+            parent_dirs_to_create = set()
+            
+            # First pass: collect all parent directories from files
+            for s3_key, file_size, last_modified in all_objects:
+                relative_path = s3_key[len(clean_prefix):] if clean_prefix else s3_key
+                
+                # Add parent directories to the set (for files only, not folder markers)
+                if not s3_key.endswith('/'):
+                    path_parts = relative_path.split('/')
+                    for i in range(len(path_parts) - 1):  # Exclude filename
+                        parent_dir = '/'.join(path_parts[:i+1])
+                        if parent_dir:
+                            parent_dirs_to_create.add(parent_dir)
+            
+            # Second pass: process all objects
+            for s3_key, file_size, last_modified in all_objects:
                 try:
                     # Calculate relative path by removing the prefix
                     relative_path = s3_key[len(clean_prefix):] if clean_prefix else s3_key
-                    local_file_path = os.path.join(local_folder_path, relative_path)
                     
-                    # Ensure local directory exists
-                    os.makedirs(os.path.dirname(local_file_path), exist_ok=True)
+                    # Check if this object should be excluded
+                    if exclusion_filter and exclusion_filter(relative_path):
+                        excluded_paths.append(relative_path)
+                        continue
                     
-                    # Download the file
-                    self.s3_client.download_file(
-                        self.bucket_name,
-                        s3_key,
-                        local_file_path
-                    )
-                    
-                    # Verify download
-                    if os.path.exists(local_file_path):
-                        results.append((s3_key, local_file_path, True, None))
-                        successful_downloads += 1
+                    # Handle folder markers (empty folders)
+                    if s3_key.endswith('/'):
+                        # This is an empty folder marker
+                        folder_rel_path = relative_path.rstrip('/')
+                        local_folder_full = os.path.join(local_folder_path, folder_rel_path)
+                        
+                        # Create the empty folder
+                        os.makedirs(local_folder_full, exist_ok=True)
+                        
+                        # Set the folder's modification time to match S3
+                        if os.path.exists(local_folder_full):
+                            timestamp = last_modified.timestamp()
+                            os.utime(local_folder_full, (timestamp, timestamp))
+                            results.append((s3_key, local_folder_full, True, None))
+                            successful_downloads += 1
+                        else:
+                            results.append((s3_key, local_folder_full, False, "Folder not created"))
+                            failed_downloads += 1
+                            results.append((s3_key, local_folder_full, False, "Folder not created"))
+                            failed_downloads += 1
                     else:
-                        results.append((s3_key, local_file_path, False, "File not found after download"))
-                        failed_downloads += 1
+                        # This is a regular file
+                        local_file_path = os.path.join(local_folder_path, relative_path)
+                        
+                        # Ensure local directory exists
+                        os.makedirs(os.path.dirname(local_file_path), exist_ok=True)
+                        
+                        # Download the file
+                        self.s3_client.download_file(
+                            self.bucket_name,
+                            s3_key,
+                            local_file_path
+                        )
+                        
+                        # Set the file's modification time to match S3
+                        if os.path.exists(local_file_path):
+                            # Convert datetime to timestamp
+                            timestamp = last_modified.timestamp()
+                            os.utime(local_file_path, (timestamp, timestamp))
+                            
+                            results.append((s3_key, local_file_path, True, None))
+                            successful_downloads += 1
+                        else:
+                            results.append((s3_key, local_file_path, False, "File not found after download"))
+                            failed_downloads += 1
                         
                 except Exception as e:
-                    error_msg = f"Failed to download {s3_key}: {str(e)}"
-                    local_file_path = os.path.join(local_folder_path, s3_key[len(clean_prefix):] if clean_prefix else s3_key)
-                    results.append((s3_key, local_file_path, False, error_msg))
+                    error_msg = f"Failed to process {s3_key}: {str(e)}"
+                    local_path = os.path.join(local_folder_path, s3_key[len(clean_prefix):] if clean_prefix else s3_key)
+                    results.append((s3_key, local_path, False, error_msg))
                     failed_downloads += 1
             
-            return successful_downloads, failed_downloads, results
+            # Third pass: create any parent directories that became empty due to exclusions
+            for parent_dir in parent_dirs_to_create:
+                if not (exclusion_filter and exclusion_filter(parent_dir)):
+                    local_parent_path = os.path.join(local_folder_path, parent_dir)
+                    if not os.path.exists(local_parent_path):
+                        try:
+                            os.makedirs(local_parent_path, exist_ok=True)
+                            # Don't count these in successful_downloads as they're implicit
+                        except Exception as e:
+                            # Log but don't fail for directory creation issues
+                            pass
+            
+            return successful_downloads, failed_downloads, results, excluded_paths
             
         except Exception as e:
             raise BlobStorageException(f"Failed to download folder: {str(e)}")
 
     def generate_upload_urls(self, paths: List[str], content_type: Optional[str] = None, expires_in: Optional[int] = None) -> List[tuple[str, str, datetime]]:
-        """Generate presigned upload URLs for multiple blob paths."""
+        """Generate presigned upload URLs for multiple blob paths.
+        
+        Args:
+            paths: List of blob paths to generate upload URLs for
+            content_type: Optional content type for the upload
+            expires_in: Optional expiration time in seconds
+            
+        Returns:
+            List of tuples containing (path, upload_url, expires_at)
+        """
         try:
             expiration_seconds = expires_in or settings.s3_presigned_url_expiration
             expires_at = datetime.now(timezone.utc).replace(microsecond=0) + timedelta(seconds=expiration_seconds)

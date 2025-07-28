@@ -139,7 +139,11 @@ export const createSourceFile = async (
           original_data_url: uploadInfo.uploadItem.path,
         }));
 
-        await registerUploadedFiles(uploadResponse.sourceId, filesToRegister);
+        await registerUploadedFiles(
+          data.agencyBaseId,
+          uploadResponse.sourceId,
+          filesToRegister
+        );
       } catch (registrationError) {
         console.error('Failed to register uploaded files:', registrationError);
         // Don't throw here - files were uploaded successfully to S3
@@ -200,7 +204,11 @@ export const addFilesToExistingSource = async (
           original_data_url: uploadInfo.uploadItem.path,
         }));
 
-        await registerUploadedFiles(data.sourceBaseId, filesToRegister);
+        await registerUploadedFiles(
+          data.agencyBaseId,
+          data.sourceBaseId,
+          filesToRegister
+        );
       } catch (registrationError) {
         console.error('Failed to register uploaded files:', registrationError);
         // Don't throw here - files were uploaded successfully to S3

@@ -1,0 +1,65 @@
+declaration:
+  call: declare
+  version: 0.1
+  description: "Zip and upload agency folders excluding specified files"
+  method: post
+  accepts: json
+  returns: json
+  namespace: source-file
+  allowlist:
+    body:
+      - field: agencyId
+        type: string
+        description: "Agency base ID to process"
+      - field: zipPath
+        type: string
+        description: "S3 path where the zip file should be uploaded"
+
+extractRequestData:
+  assign:
+    agency_base_id: "${incoming.body.agencyId}"
+    zip_path: "${incoming.body.zipPath ?? 'zipped/' + incoming.body.agencyId + '.zip'}"
+
+validateInput:
+  switch:
+    - condition: ${agency_base_id === null || agency_base_id === ""}
+      next: returnError
+
+getExcludedSourceFiles:
+  call: http.get
+  args:
+    url: "[#CKB_RESQL]/source_file/list_excluded_source_files_by_agency"
+    query:
+      agency_base_id: ${agency_base_id}
+  result: res
+
+formatExcludedFolders:
+  call: http.post
+  args:
+    url: "[#CKB_DMAPPER_HBS]/format_excluded_folders_for_zip"
+    headers:
+      type: json
+    body:
+      agencyId: ${agency_base_id}
+      zipPath: ${zip_path}
+      excludedFiles: ${res.response.body}
+  result: formattedRes
+
+zipAndUploadFolders:
+  call: http.post
+  args:
+    url: "[#CKB_FILE_MANAGER]/zip-and-upload-folders-async"
+    headers:
+      type: json
+    body:
+      folders: ${formattedRes.response.body.folders}
+  result: zipResult
+
+returnSuccess:
+  return: ${zipResult.response.body}
+  next: end
+
+returnError:
+  return: "Missing required parameter: agencyId"
+  status: 400
+  next: end
