@@ -5,6 +5,8 @@ import requests
 
 from itemadapter import ItemAdapter
 from scrapy import Spider
+
+from api.utils import get_path_for_task
 from scrapper.spiders.sitemap_collect_spider import SitemapCollectSpider
 from scrapper.spiders.single_url_spider import SingleUrlSpider
 
@@ -20,14 +22,10 @@ def get_filename_as_hash(url: str) -> str:
 def get_path_for_scrapped_item(item: ScrappedItem, spider: Spider) -> str:
     scrapper_directory = spider.settings.get('SCRAPED_DIRECTORY', '/scrapped-data')
 
-    task: BaseObject = spider.task
-
-    agency_str = task.agency_name + '_' + task.agency_id
-    source_str = task.source_name + '_' + task.source_id
+    path = get_path_for_task(spider.task)
     scraped_str = get_filename_as_hash(item.metadata.source_url)
 
-    return os.path.join(scrapper_directory, agency_str, source_str, scraped_str)
-
+    return os.path.join(scrapper_directory, path, scraped_str)
 
 
 class CreateDirectoryPipeline:
@@ -44,7 +42,6 @@ class CreateDirectoryPipeline:
         item.path = path
 
         return item
-
 
 
 class MetadataPipeline:
@@ -76,7 +73,6 @@ class FilePipeline:
     def process_item(self, item, spider: Spider):
         if not isinstance(item, ScrappedItem):
             return item
-
 
         filename = f'source{item.file.extension}'
         full_path = os.path.join(item.path, filename)

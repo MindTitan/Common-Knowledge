@@ -13,9 +13,6 @@ declaration:
       - field: agency_base_id
         type: string
         description: "agency base id"
-      - field: substector
-        type: string
-        description: "subsector"
 */
 SELECT copy_row_with_modifications(
     'source',
@@ -26,7 +23,7 @@ SELECT copy_row_with_modifications(
            'status', '::SOURCE_STATUS_TYPE', 'running',
            'updated_at', '::TIMESTAMP WITH TIME ZONE', NOW()::VARCHAR
        ]::VARCHAR[]
-), base_id, agency_base_id, subsector
+), base_id, agency_base_id
 FROM source
 WHERE (base_id, updated_at) IN (
     SELECT base_id, max(updated_at) FROM source

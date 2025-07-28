@@ -4,7 +4,6 @@ from pydantic import BaseModel, HttpUrl
 class BaseObject(BaseModel):
     agency_name: str
     agency_id: str
-    source_name: str
     source_id: str
 
 
