@@ -333,7 +333,6 @@ services:
     container_name: cleaning-server
     build:
       context: ./cleaning
-      target: server
     ports:
       - 8123:8123
     volumes:
@@ -341,38 +340,6 @@ services:
       - ./cleaning:/app
     environment:
       - RUUTER_INTERNAL=http://ruuter-internal:8089
-      - BROKER_URL=pyamqp://admin:admin@rabbit-cleaning/cleaning
-    depends_on:
-      - rabbit-cleaning
-    networks:
-      - bykstack
-
-  cleaning-celery:
-    container_name: cleaning-celery
-    build:
-      context: ./cleaning
-      target: celery
-    volumes:
-      - ./scrapped-data:/scrapped-data
-      - ./cleaning:/app
-    environment:
-      - RUUTER_INTERNAL=http://ruuter-internal:8089
-      - BROKER_URL=pyamqp://admin:admin@rabbit-cleaning/cleaning
-    depends_on:
-      - rabbit-cleaning
-    networks:
-      - bykstack
-
-  rabbit-cleaning:
-    image: rabbitmq:4-management
-    container_name: rabbit-cleaning
-    environment:
-      - RABBITMQ_DEFAULT_USER=admin
-      - RABBITMQ_DEFAULT_PASS=admin
-      - RABBITMQ_DEFAULT_VHOST=cleaning
-    ports:
-      - "5692:5672"
-      - "15692:15672"
     networks:
       - bykstack
 

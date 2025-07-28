@@ -1,6 +1,8 @@
 import datetime
 import json
 import os
+import shutil
+
 import requests
 
 from itemadapter import ItemAdapter
@@ -100,6 +102,8 @@ class TriggerCleaningPipeline:
                 'source_file_id': item.source_file_id,
             }
         )
+
+        shutil.rmtree(item.path)
 
         return item
 

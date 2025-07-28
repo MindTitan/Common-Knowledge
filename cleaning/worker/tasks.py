@@ -1,17 +1,11 @@
 import json
 import requests
-import shutil
 
-from celery import Celery
 from unstructured.partition.auto import partition
 from bs4 import BeautifulSoup
 
 from api.config import settings
 from api.models import EntityToClean
-from worker.utils import un_json
-
-
-app = Celery('ckb', broker=settings.broker_url.unicode_string())
 
 
 def clean_html(entity: EntityToClean):
@@ -27,8 +21,6 @@ def clean_any_file(entity: EntityToClean):
     return cleaned_text
 
 
-@app.task
-@un_json(EntityToClean)
 def clean_file_task(entity: EntityToClean):
     with entity.meta_data_path.open('r') as f:
         metadata = json.load(f)
@@ -72,5 +64,3 @@ def clean_file_task(entity: EntityToClean):
             'cleaned_metadata_url': uploaded_cleaned_metadata_url,
         }
     )
-
-    shutil.rmtree(entity.directory_path)
