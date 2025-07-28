@@ -553,6 +553,7 @@
     "running": "Pooleli",
     "finished": "Valmis",
     "centops": "Centops",
+    "stopSuccess": "Protsess katkestatakse peagi",
     "sources": "Allikad",
     "searchWithinListedSources": "Otsige loetletud allikatest",
     "excluded": "Välistatud",

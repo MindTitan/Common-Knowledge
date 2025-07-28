@@ -503,7 +503,7 @@ const Agency: FC = () => {
               className="agencies__action-btn"
               appearance="text"
               size="s"
-              onClick={() => handleStopScraping(row.original.id)}
+              onClick={() => handleStopScraping(row.original.baseId)}
               disabled={stopScrapingMutation.isLoading}
             >
               <Icon

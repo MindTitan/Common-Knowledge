@@ -4,13 +4,16 @@ import contextlib
 
 from typing import Any, AsyncIterator
 
+import requests
 from bs4 import BeautifulSoup
 from playwright.async_api import Page
 
 from fake_useragent import UserAgent
 from scrapy import Spider, Request
+from scrapy.exceptions import CloseSpider
 from scrapy.http import Response
 
+from api.models import BaseObject
 from scrapper.items import FileItem, MetadataItem, Metadata, ScrappedItem
 
 
@@ -81,12 +84,27 @@ class BaseSpider(Spider):
     # custom_settings = {
     #     'ROBOTSTXT_OBEY': False
     # }
+    task: BaseObject
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.ua = UserAgent(platforms='desktop')
         self.report_id = None
+
+        if isinstance(kwargs.get('task'), BaseObject):
+            self.task = kwargs['task']
+
+    def check_source_is_stopping(self):
+        try:
+            is_stopping = requests.get(
+                f'{self.settings.get('RUUTER_INTERNAL')}/ckb/source/get',
+                params={'baseId': self.task.source_id}
+            ).json()['response'][0]['isStopping']
+        except Exception:
+            raise CloseSpider('source not found')
+        if is_stopping:
+            raise CloseSpider('source is stopping')
 
     def get_meta(self):
         return {
@@ -135,6 +153,7 @@ class BaseSpider(Spider):
 
     async def parse(self, response: Response, **kwargs):
         async with self.close_page(response) as page:
+            self.check_source_is_stopping()
             page: Page
 
             file_extension = self.guess_file_extension(

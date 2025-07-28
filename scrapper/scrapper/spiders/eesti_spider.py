@@ -111,6 +111,7 @@ class EestiSpider(BaseSpider):
             return
         
         for i, entry in enumerate(self.article_entries, 1):
+            self.check_source_is_stopping()
             article_id = entry['id']
             href = entry['href']
             

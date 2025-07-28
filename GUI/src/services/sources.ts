@@ -297,8 +297,8 @@ export const deleteSource = async (sourceId: string): Promise<void> => {
  * Stop scraping a source
  */
 export const stopSourceScraping = async (sourceId: string): Promise<void> => {
-  await apiDev.post('/agency/sources/stop', {
-    sourceId: sourceId,
+  await apiDev.post('/source/stop', {
+    baseId: sourceId,
   });
 };
 

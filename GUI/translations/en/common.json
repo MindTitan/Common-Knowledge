@@ -484,6 +484,7 @@
     "upload": "Upload",
     "addApi": "Add API",
     "addUrl": "Add URL",
+    "stopSuccess": "Process will be aborted shortly",
     "uploadTitle": "Upload Document",
     "addApiTitle": "Add API Integration",
     "addUrlTitle": "Add Website URL",
