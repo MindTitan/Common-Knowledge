@@ -90,6 +90,19 @@ class BlobStorageProvider(ABC):
         """
         pass
 
+    @abstractmethod
+    def move_file(self, source_path: str, destination_path: str) -> bool:
+        """Move a file from source to destination within blob storage.
+        
+        Args:
+            source_path: Source file path in blob storage
+            destination_path: Destination file path in blob storage
+            
+        Returns:
+            bool: True if move was successful, False otherwise
+        """
+        pass
+
 
 def get_blob_storage_provider(provider_name: str) -> BlobStorageProvider:
     if provider_name == "s3":

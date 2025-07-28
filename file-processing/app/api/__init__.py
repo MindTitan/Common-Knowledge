@@ -1,10 +1,12 @@
 from fastapi import APIRouter
-from app.api.endpoints import upload, download, zip
+from app.api.endpoints import upload, download, zip, move
 
 api_router = APIRouter()
 
 api_router.include_router(upload.router, tags=["upload"])
 api_router.include_router(download.router, tags=["download"])
 api_router.include_router(zip.router, tags=["zip"])
+api_router.include_router(move.router, tags=["move"])
+
 
 __all__ = ["api_router"]

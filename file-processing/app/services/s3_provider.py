@@ -355,5 +355,65 @@ class S3Provider(BlobStorageProvider):
         except Exception as e:
             raise BlobStorageException(f"Failed to generate upload URLs: {str(e)}")
 
+    def move_file(self, source_path: str, destination_path: str) -> bool:
+        """Move a file from source to destination within S3.
+        
+        Args:
+            source_path: Source file path in S3
+            destination_path: Destination file path in S3
+            
+        Returns:
+            bool: True if move was successful, False otherwise
+        """
+        try:
+            # Check if source file exists
+            if not self.file_exists(source_path):
+                raise BlobStorageException(f"Source file not found: {source_path}")
+            
+            # Copy the object to the new location
+            copy_source = {
+                'Bucket': self.bucket_name,
+                'Key': source_path
+            }
+            
+            self.s3_client.copy_object(
+                CopySource=copy_source,
+                Bucket=self.bucket_name,
+                Key=destination_path
+            )
+            
+            # Verify the copy was successful
+            if not self.file_exists(destination_path):
+                raise BlobStorageException("File copy verification failed")
+            
+            # Delete the source file
+            self.s3_client.delete_object(
+                Bucket=self.bucket_name,
+                Key=source_path
+            )
+            
+            # Verify the source file was deleted
+            if self.file_exists(source_path):
+                # Attempt to clean up the destination if source deletion failed
+                try:
+                    self.s3_client.delete_object(
+                        Bucket=self.bucket_name,
+                        Key=destination_path
+                    )
+                except:
+                    pass  # Ignore cleanup errors
+                raise BlobStorageException("Source file deletion failed")
+            
+            return True
+            
+        except NoCredentialsError:
+            raise BlobStorageException("AWS credentials not found")
+        except ClientError as e:
+            raise BlobStorageException(f"S3 move operation failed: {str(e)}")
+        except BlobStorageException:
+            raise  # Re-raise blob storage exceptions
+        except Exception as e:
+            raise BlobStorageException(f"Move operation failed: {str(e)}")
+
 
 s3_provider = S3Provider()
