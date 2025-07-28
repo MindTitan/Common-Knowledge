@@ -170,6 +170,7 @@ class ScrappingFinishedPipeline:
             'source_id': task.source_id,
             'status': 'finished',
         })
+        requests.get(f'{spider.settings.get('RUUTER_INTERNAL')}/ckb/pipeline/scheduler-check-for-unscheduled-records')
 
 
 class InitLoggingPipeline:

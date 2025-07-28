@@ -4,7 +4,8 @@ SELECT copy_row_with_modifications(
     ARRAY[
         'status', '::source_status_type', :status,
         'updated_at', '::TIMESTAMP WITH TIME ZONE', NOW()::VARCHAR,
-        'is_stopping', '::BOOLEAN', FALSE::VARCHAR
+        'is_stopping', '::BOOLEAN', FALSE::VARCHAR,
+        'next_scrapping_at', '::TIMESTAMP WITH TIME ZONE', NULL
     ]::VARCHAR[]
 ) as id
 FROM source
