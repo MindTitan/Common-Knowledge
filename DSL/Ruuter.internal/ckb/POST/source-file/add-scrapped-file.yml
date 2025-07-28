@@ -20,12 +20,6 @@ declaration:
       - field: page_title
         type: string
         description: "Title of the scraped page"
-      - field: original_data_url
-        type: string
-        description: "scrapped data url"
-      - field: original_metadata_url
-        type: string
-        description: "scraped data's metadata url"
       - field: original_data_hash
         type: string
         description: "hash of scrapped data"
@@ -42,8 +36,6 @@ addScrappedFile:
       agency_base_id: ${incoming.body.agency_id}
       url: ${incoming.body.url}
       page_title: ${incoming.body.page_title}
-      original_data_url: ${incoming.body.original_data_url}
-      original_metadata_url: ${incoming.body.original_metadata_url}
       original_data_hash: ${incoming.body.original_data_hash}
       scraped_at: ${incoming.body.scraped_at}
   result: res

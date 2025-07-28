@@ -1,6 +1,5 @@
 import datetime
 import json
-import hashlib
 import os
 import requests
 
@@ -14,18 +13,13 @@ from scrapper.items import ScrappedItem
 from api.models import BaseObject
 
 
-def get_filename_as_hash(url: str) -> str:
-    hashed_url = hashlib.sha1(url.encode()).hexdigest()
-    return hashed_url
-
-
-def get_path_for_scrapped_item(item: ScrappedItem, spider: Spider) -> str:
+def get_path_for_scrapped_item(item: ScrappedItem, spider: BaseSpider) -> str:
     scrapper_directory = spider.settings.get('SCRAPED_DIRECTORY', '/scrapped-data')
 
     path = get_path_for_task(spider.task)
-    scraped_str = get_filename_as_hash(item.metadata.source_url)
+    source_file_path = item.source_file_id
 
-    return os.path.join(scrapper_directory, path, scraped_str)
+    return os.path.join(scrapper_directory, path, source_file_path)
 
 
 class CreateDirectoryPipeline:
@@ -129,8 +123,6 @@ class CreateSourceFile:
             'source_id': task.source_id,
             'url': item.metadata.source_url,
             'page_title': item.metadata.page_title,
-            'original_data_url': item.file_path_uploaded,
-            'original_metadata_url': item.metadata_path_uploaded,
             'original_data_hash': item.hash,
             'scraped_at': item.metadata.created_at
         })
@@ -141,9 +133,6 @@ class CreateSourceFile:
 class UpdateSourceFile:
     def process_item(self, item, spider: Spider):
         if not isinstance(item, ScrappedItem):
-            return item
-
-        if item.source_file_id is None:
             return item
 
         requests.post(f'{spider.settings.get('RUUTER_INTERNAL')}/ckb/source-file/update-scrapped-file', json={

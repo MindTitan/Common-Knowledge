@@ -262,7 +262,7 @@ export const updateFileEditedDataUrl = async (
 ): Promise<void> => {
   const response = await apiDev.post('/source-file/edit-file', {
     base_id: baseId,
-    edited_data_url: editedDataUrl,
+    edited_data_url: `uploads/scrapped-data/${editedDataUrl}`,
   });
 
   const apiResponse = response.data;
