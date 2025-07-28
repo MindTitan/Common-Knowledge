@@ -1,5 +1,4 @@
 from contextlib import suppress
-from functools import cache
 
 import requests
 from scrapy import Request
@@ -9,8 +8,8 @@ from scrapper.spiders.base_spider import BaseSpider
 from api.models import SpecifiedLinksScrapeTask
 
 
-class SingleUrlSpider(BaseSpider):
-    name = 'single_url_spider'
+class SpecifiedPagesSpider(BaseSpider):
+    name = 'specified_pages_spider'
     custom_settings = {
         'ROBOTSTXT_OBEY': False
     }
@@ -19,7 +18,7 @@ class SingleUrlSpider(BaseSpider):
         super().__init__(*args, **kwargs)
         if isinstance(kwargs.get('task'), SpecifiedLinksScrapeTask):
             self.task: SpecifiedLinksScrapeTask = kwargs.get('task')
-            self.start_urls = [self.task.urls[0].unicode_string()]
+            self.start_urls = [self.task.urls[0].url.unicode_string()]
             self.url_iter = iter([url.url.unicode_string() for url in self.task.urls[1:]])
             self.urls = self.task.urls
 

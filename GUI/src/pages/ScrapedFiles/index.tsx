@@ -234,7 +234,7 @@ const ScrapedFiles: FC = () => {
   });
 
   const handleRefresh = (file: ScrapedFile) => {
-    refreshMutation.mutate(file.id);
+    refreshMutation.mutate(file.baseId);
   };
 
   const handleDelete = () => {

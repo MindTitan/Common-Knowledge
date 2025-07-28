@@ -552,6 +552,7 @@
     "urls": "URLid",
     "running": "Pooleli",
     "finished": "Valmis",
+    "scraping": "kraapimist",
     "centops": "Centops",
     "stopSuccess": "Protsess katkestatakse peagi",
     "refreshSuccess": "Käsitsi värskendamine on alanud",

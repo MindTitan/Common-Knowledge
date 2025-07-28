@@ -8,7 +8,7 @@ from worker.tasks import eesti_scrapper_task
 app = FastAPI()
 
 
-@app.post('/single-page-scrapper-task')
+@app.post('/specified-pages-scrapper-task')
 def trigger_single_page_scrapper_task(task: SpecifiedLinksScrapeTask):
     specified_links_scrapper_task.delay(task.model_dump(mode='json'))
 

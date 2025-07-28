@@ -166,7 +166,7 @@ export const updateFileExclusion = async (
  */
 export const refreshScrapedFile = async (fileId: string): Promise<void> => {
   await apiDev.post('/source-file/refresh', {
-    fileId: fileId,
+    baseId: fileId,
   });
 };
 

@@ -555,6 +555,7 @@
     "urls": "URLs",
     "running": "In progress",
     "finished": "Done",
+    "scraping": "Scrapping",
     "centops": "Centops",
     "sources": "Sources",
     "searchWithinListedSources": "Search within listed sources",

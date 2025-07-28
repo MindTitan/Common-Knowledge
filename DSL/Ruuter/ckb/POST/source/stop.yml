@@ -1,7 +1,7 @@
 declaration:
   call: declare
   version: 0.1
-  description: "Delete a source by base ID"
+  description: "Stop a source by base ID"
   method: post
   accepts: json
   returns: json
@@ -10,7 +10,7 @@ declaration:
     body:
       - field: baseId
         type: string
-        description: "Base ID of the source to delete"
+        description: "Base ID of the source to stop"
 
 extractRequestData:
   assign:

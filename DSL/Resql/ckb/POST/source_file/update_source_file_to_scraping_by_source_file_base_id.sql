@@ -1,15 +1,15 @@
 /*
 declaration:
   version: 0.1
-  description: "Get source_file by source id and mark it as running"
+  description: "Get source_file by source file id and mark it as running"
   method: post
   returns: json
   namespace: scheduler
   allowlist:
     body:
-      - field: source_base_id
+      - field: base_id
         type: string
-        description: "base id of source"
+        description: "base id of source file"
       - field: reference_time
         type: string
         description: "fetch source files, scrapped before reference time"
@@ -36,17 +36,14 @@ SELECT
             'updated_at', '::TIMESTAMP WITH TIME ZONE', NOW()::VARCHAR
         ]::VARCHAR[]
     ),
-    base_id as id, url, original_data_hash as hash
+    base_id as id, url, original_data_hash as hash, source_base_id, agency_base_id
 FROM source_file
-WHERE (base_id, updated_at) IN (
-        SELECT base_id, max(updated_at)
+WHERE base_id = :base_id::UUID AND
+    updated_at = (
+        SELECT max(updated_at)
         FROM source_file
-        WHERE source_base_id = :source_base_id::UUID
-        GROUP BY base_id
+        WHERE base_id = :base_id::UUID
     )
-    AND is_excluded = FALSE
     AND is_deleted = FALSE
     AND type = 'scraped_file'
-    AND status = 'finished'::SOURCE_FILE_STATUS_TYPE
-    AND last_scraped_at < :reference_time::TIMESTAMP WITH TIME ZONE
 LIMIT 1;

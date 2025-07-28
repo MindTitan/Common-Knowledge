@@ -7,7 +7,7 @@ from scrapy.utils.project import get_project_settings
 
 from api.models import SpecifiedLinksScrapeTask
 
-from scrapper.spiders.single_url_spider import SingleUrlSpider
+from scrapper.spiders.specified_pages_spider import SpecifiedPagesSpider
 
 
 
@@ -17,7 +17,7 @@ def main():
     logging.disable(logging.DEBUG)
     task = SpecifiedLinksScrapeTask(**json.loads(sys.argv[1][1:-1]))
     process = CrawlerProcess(get_project_settings())
-    process.crawl(SingleUrlSpider, task=task)
+    process.crawl(SpecifiedPagesSpider, task=task)
     process.start()
 
 

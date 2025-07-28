@@ -8,7 +8,7 @@ extractRequestData:
 triggerScrapper:
   call: http.post
   args:
-    url: "[#CKB_SCRAPPER_SERVICE]/single-page-scrapper-task"
+    url: "[#CKB_SCRAPPER_SERVICE]/specified-pages-scrapper-task"
     contentType: json
     body:
       agency_id: ${agency_id}

@@ -8,8 +8,7 @@ from itemadapter import ItemAdapter
 from scrapy import Spider
 
 from api.utils import get_path_for_task
-from scrapper.spiders.sitemap_collect_spider import SitemapCollectSpider
-from scrapper.spiders.single_url_spider import SingleUrlSpider
+from scrapper.spiders.base_spider import BaseSpider
 
 from scrapper.items import ScrappedItem
 from api.models import BaseObject
@@ -122,7 +121,7 @@ class CreateSourceFile:
         if item.source_file_id is not None:
             return item
 
-        spider: SitemapCollectSpider
+        spider: BaseSpider
         task: BaseObject = spider.task
 
         res = requests.post(f'{spider.settings.get('RUUTER_INTERNAL')}/ckb/source-file/add-scrapped-file', json={
@@ -164,7 +163,7 @@ class ScrappingFinishedPipeline:
         if not hasattr(spider, 'task'):
             return
 
-        spider: SitemapCollectSpider | SingleUrlSpider
+        spider: BaseSpider
         task: BaseObject = spider.task
 
         requests.post(f'{spider.settings.get('RUUTER_INTERNAL')}/ckb/source/update-status', json={
@@ -183,7 +182,7 @@ class SetSourceStatusRunningPipeline:
         if not hasattr(spider, 'task'):
             return
 
-        spider: SitemapCollectSpider | SingleUrlSpider
+        spider: BaseSpider
         task: BaseObject = spider.task
 
         requests.post(f'{spider.settings.get('RUUTER_INTERNAL')}/ckb/source/update-status', json={

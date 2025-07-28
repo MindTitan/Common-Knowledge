@@ -2,10 +2,10 @@ import datetime
 import requests
 
 from api.models import EntireSourceScrapperTask, LinkToScrape
-from scrapper.spiders.single_url_spider import SingleUrlSpider
+from scrapper.spiders.specified_pages_spider import SpecifiedPagesSpider
 
 
-class EntireSourceSpider(SingleUrlSpider):
+class EntireSourceSpider(SpecifiedPagesSpider):
 
     name = 'entire_source_spider'
 
