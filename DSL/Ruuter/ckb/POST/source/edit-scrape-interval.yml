@@ -36,6 +36,13 @@ updateSourceScrapeInterval:
       updateAutomatically: ${updateAutomatically}
   result: res
 
+triggerScheduler:
+  call: http.get
+  args:
+    url: "[#CKB_RUUTER_INTERNAL]/pipeline/scheduler-check-for-unscheduled-records"
+
+  result: scheduler
+
 returnSuccess:
   return: ${res.response.body}
   next: end

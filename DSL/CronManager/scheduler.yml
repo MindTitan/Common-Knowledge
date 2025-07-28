@@ -3,8 +3,9 @@ trigger_scheduler:
   type: http
   method: GET
   url: http://ruuter-internal:8089/ckb/pipeline/scheduler-check-for-unscheduled-records
-#trigger_pipeline_for_scheduled_entities:
-#  trigger: "*/5 * * * * ?"
-#  type: http
-#  method: POST
-#  url: http://ruuter-internal:8089/pipeline/trigger-pipeline-for-sceduled-entities
+
+trigger_pipeline_for_scheduled_entities:
+  trigger: "*/5 * * * * ?"
+  type: http
+  method: GET
+  url: http://ruuter-internal:8089/pipeline/trigger-pipeline-for-sceduled-sources
