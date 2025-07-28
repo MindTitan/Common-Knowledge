@@ -306,8 +306,8 @@ export const stopSourceScraping = async (sourceId: string): Promise<void> => {
  * Refresh/restart scraping a source
  */
 export const refreshSource = async (sourceId: string): Promise<void> => {
-  await apiDev.post('/agency/sources/refresh', {
-    sourceId: sourceId,
+  await apiDev.post('/source/refresh', {
+    baseId: sourceId,
   });
 };
 

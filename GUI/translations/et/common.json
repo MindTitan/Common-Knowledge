@@ -554,6 +554,7 @@
     "finished": "Valmis",
     "centops": "Centops",
     "stopSuccess": "Protsess katkestatakse peagi",
+    "refreshSuccess": "Käsitsi värskendamine on alanud",
     "sources": "Allikad",
     "searchWithinListedSources": "Otsige loetletud allikatest",
     "excluded": "Välistatud",

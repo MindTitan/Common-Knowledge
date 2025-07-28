@@ -485,6 +485,7 @@
     "addApi": "Add API",
     "addUrl": "Add URL",
     "stopSuccess": "Process will be aborted shortly",
+    "refreshSuccess": "Manual refresh has started",
     "uploadTitle": "Upload Document",
     "addApiTitle": "Add API Integration",
     "addUrlTitle": "Add Website URL",

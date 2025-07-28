@@ -517,7 +517,7 @@ const Agency: FC = () => {
               className="agencies__action-btn"
               appearance="text"
               size="s"
-              onClick={() => handleRefreshSource(row.original.id)}
+              onClick={() => handleRefreshSource(row.original.baseId)}
               disabled={refreshMutation.isLoading}
             >
               <Icon icon={<MdRefresh fontSize={20} />} size="medium" />
