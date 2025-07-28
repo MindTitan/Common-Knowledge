@@ -219,10 +219,55 @@ class ZipTaskStatusResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+# Schemas for zip and upload functionality
+class FolderZipItem(BaseModel):
+    s3_path: str  # Source folder path in S3
+    s3_zip_path: str  # Destination zip file path in S3
+    excluded_folders: Optional[List[str]] = []  # List of subfolder names to exclude from this folder's zip
+
+class ZipAndUploadRequest(BaseModel):
+    folders: List[FolderZipItem]
+    callback: Optional[CallbackRequest] = None
+
+class FolderZipResult(BaseModel):
+    s3_path: str
+    s3_zip_path: str
+    status: str  # "success" or "failed"
+    zip_size: Optional[int] = None
+    files_count: Optional[int] = None  # Total count of files and folders in the zip
+    excluded_subfolders: Optional[List[str]] = []  # List of subfolders that were excluded
+    error_message: Optional[str] = None
+
+class ZipAndUploadResponse(BaseModel):
+    total_folders: int
+    successful_zips: int
+    failed_zips: int
+    results: List[FolderZipResult]
+
+class ZipTaskResponse(BaseModel):
+    task_id: str
+    status: TaskStatus
+    total_folders: int
+    successful_zips: int = 0
+    failed_zips: int = 0
+    results: List[FolderZipResult] = []
+
+class ZipTaskStatusResponse(BaseModel):
+    task_id: str
+    status: TaskStatus
+    total_folders: int
+    completed_folders: int
+    failed_folders: int
+    results: List[FolderZipResult]
+    error_message: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
 # Schemas for move functionality
 class FileMoveItem(BaseModel):
-    s3_from_path: str  # Source file path in S3
-    s3_to_path: str    # Destination file path in S3
+    s3_from_path: str  # Source file/folder path in S3
+    s3_to_path: str    # Destination file/folder path in S3
+    is_folder: bool = False  # Specify if it's a folder
 
 class MoveFilesRequest(BaseModel):
     files: List[FileMoveItem]

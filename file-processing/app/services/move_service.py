@@ -123,6 +123,67 @@ def process_single_file_move(file_item: FileMoveItem) -> FileMoveResult:
         )
 
 
+def process_folder_move(file_item: FileMoveItem) -> FileMoveResult:
+    """Process move of a folder (all files within it)."""
+    try:
+        # Clean the s3_from_path - remove s3:// prefix if present
+        clean_from_path = file_item.s3_from_path
+        if clean_from_path.startswith('s3://'):
+            parts = clean_from_path.replace('s3://', '').split('/', 1)
+            if len(parts) > 1:
+                clean_from_path = parts[1]
+            else:
+                clean_from_path = parts[0]
+        
+        # Clean the s3_to_path - remove s3:// prefix if present
+        clean_to_path = file_item.s3_to_path
+        if clean_to_path.startswith('s3://'):
+            parts = clean_to_path.replace('s3://', '').split('/', 1)
+            if len(parts) > 1:
+                clean_to_path = parts[1]
+            else:
+                clean_to_path = parts[0]
+        
+        # Ensure paths end with / for proper folder handling
+        if not clean_from_path.endswith('/'):
+            clean_from_path += '/'
+        if not clean_to_path.endswith('/'):
+            clean_to_path += '/'
+        
+        # Move the entire folder
+        success = storage_provider.move_folder(clean_from_path, clean_to_path)
+        
+        if success:
+            return FileMoveResult(
+                s3_from_path=file_item.s3_from_path,
+                s3_to_path=file_item.s3_to_path,
+                status="success"
+            )
+        else:
+            return FileMoveResult(
+                s3_from_path=file_item.s3_from_path,
+                s3_to_path=file_item.s3_to_path,
+                status="failed",
+                error_message="Folder move operation failed"
+            )
+            
+    except BlobStorageException as e:
+        return FileMoveResult(
+            s3_from_path=file_item.s3_from_path,
+            s3_to_path=file_item.s3_to_path,
+            status="failed",
+            error_message=f"Blob storage error: {str(e)}"
+        )
+    except Exception as e:
+        error_msg = f"Unexpected error: {str(e)}"
+        return FileMoveResult(
+            s3_from_path=file_item.s3_from_path,
+            s3_to_path=file_item.s3_to_path,
+            status="failed",
+            error_message=error_msg
+        )
+
+
 def process_move_task(task_id: str) -> None:
     """Process a move task by moving all files."""
     task_data = _move_tasks.get(task_id)
@@ -139,15 +200,19 @@ def process_move_task(task_id: str) -> None:
         
         for file_item in task_data["files"]:
             try:
-                result = process_single_file_move(file_item)
+                if file_item.is_folder:
+                    result = process_folder_move(file_item)
+                    logger.info(f"Processed folder move {file_item.s3_from_path}: {result.status}")
+                else:
+                    result = process_single_file_move(file_item)
+                    logger.info(f"Processed file move {file_item.s3_from_path}: {result.status}")
+                
                 results.append(result)
                 
                 if result.status == "success":
                     successful_moves += 1
-                    logger.info(f"Successfully moved {file_item.s3_from_path} to {file_item.s3_to_path}")
                 else:
                     failed_moves += 1
-                    logger.error(f"Failed to move {file_item.s3_from_path}: {result.error_message}")
                     
             except Exception as e:
                 error_msg = f"Unexpected error processing {file_item.s3_from_path}: {str(e)}"
@@ -260,15 +325,19 @@ def move_files(request: MoveFilesRequest) -> MoveFilesResponse:
     
     for file_item in request.files:
         try:
-            result = process_single_file_move(file_item)
+            if file_item.is_folder:
+                result = process_folder_move(file_item)
+                logger.info(f"Processed folder move {file_item.s3_from_path}: {result.status}")
+            else:
+                result = process_single_file_move(file_item)
+                logger.info(f"Processed file move {file_item.s3_from_path}: {result.status}")
+            
             results.append(result)
             
             if result.status == "success":
                 successful_moves += 1
-                logger.info(f"Successfully moved {file_item.s3_from_path} to {file_item.s3_to_path}")
             else:
                 failed_moves += 1
-                logger.error(f"Failed to move {file_item.s3_from_path}: {result.error_message}")
                 
         except Exception as e:
             error_msg = f"Unexpected error processing {file_item.s3_from_path}: {str(e)}"

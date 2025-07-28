@@ -6,6 +6,9 @@ from botocore.exceptions import ClientError, NoCredentialsError
 from app.services.blob_storage import BlobStorageProvider, BlobStorageException
 from app.core.config import settings
 import botocore.session
+import logging
+
+logger = logging.getLogger(__name__)
 
 session = botocore.session.get_session()
 session.set_config_variable('s3', {'signature_version': 's3v4'})
@@ -414,6 +417,162 @@ class S3Provider(BlobStorageProvider):
             raise  # Re-raise blob storage exceptions
         except Exception as e:
             raise BlobStorageException(f"Move operation failed: {str(e)}")
+    
+    def move_folder(self, source_prefix: str, destination_prefix: str) -> bool:
+        """Move a folder from source to destination within S3.
+        
+        Args:
+            source_prefix: Source folder prefix in S3 (should end with /)
+            destination_prefix: Destination folder prefix in S3 (should end with /)
+            
+        Returns:
+            bool: True if move was successful, False otherwise
+        """
+        try:
+            # List all objects in the source folder
+            all_objects = []
+            paginator = self.s3_client.get_paginator('list_objects_v2')
+            
+            page_iterator = paginator.paginate(
+                Bucket=self.bucket_name,
+                Prefix=source_prefix
+            )
+            
+            for page in page_iterator:
+                if 'Contents' in page:
+                    for obj in page['Contents']:
+                        all_objects.append(obj['Key'])
+            
+            if not all_objects:
+                # Empty folder or doesn't exist - create destination folder marker if needed
+                if not destination_prefix.endswith('/'):
+                    destination_prefix += '/'
+                
+                # Create empty folder marker at destination
+                self.s3_client.put_object(
+                    Bucket=self.bucket_name,
+                    Key=destination_prefix,
+                    Body=b''
+                )
+                return True
+            
+            # Track successful moves for rollback if needed
+            moved_objects = []
+            
+            try:
+                # Move each object
+                for source_key in all_objects:
+                    # Calculate destination key
+                    relative_path = source_key[len(source_prefix):]
+                    destination_key = destination_prefix + relative_path
+                    
+                    # Copy object to new location
+                    copy_source = {
+                        'Bucket': self.bucket_name,
+                        'Key': source_key
+                    }
+                    
+                    self.s3_client.copy_object(
+                        CopySource=copy_source,
+                        Bucket=self.bucket_name,
+                        Key=destination_key
+                    )
+                    
+                    # Verify copy was successful
+                    if not self.file_exists(destination_key):
+                        raise BlobStorageException(f"Copy verification failed for {source_key}")
+                    
+                    moved_objects.append((source_key, destination_key))
+                
+                # If all copies successful, delete source objects
+                for source_key, _ in moved_objects:
+                    self.s3_client.delete_object(
+                        Bucket=self.bucket_name,
+                        Key=source_key
+                    )
+                    
+                    # Verify deletion (optional - S3 delete is usually reliable)
+                    if self.file_exists(source_key):
+                        logger.warning(f"Source object {source_key} still exists after deletion")
+                
+                # Clean up empty folder markers in the source path
+                self._cleanup_empty_folders(source_prefix)
+                
+                return True
+                
+            except Exception as e:
+                # Rollback: delete any successfully copied objects
+                logger.error(f"Folder move failed, attempting rollback: {str(e)}")
+                for _, destination_key in moved_objects:
+                    try:
+                        self.s3_client.delete_object(
+                            Bucket=self.bucket_name,
+                            Key=destination_key
+                        )
+                    except Exception as rollback_error:
+                        logger.error(f"Rollback failed for {destination_key}: {str(rollback_error)}")
+                
+                raise BlobStorageException(f"Folder move failed: {str(e)}")
+                
+        except NoCredentialsError:
+            raise BlobStorageException("AWS credentials not found")
+        except ClientError as e:
+            raise BlobStorageException(f"S3 folder move operation failed: {str(e)}")
+        except BlobStorageException:
+            raise  # Re-raise blob storage exceptions
+        except Exception as e:
+            raise BlobStorageException(f"Folder move operation failed: {str(e)}")
 
+    def _cleanup_empty_folders(self, folder_prefix: str) -> None:
+        """Clean up empty folder markers after moving folder contents.
+        
+        Args:
+            folder_prefix: The folder prefix that was moved from
+        """
+        try:
+            # Remove trailing slash for processing
+            clean_prefix = folder_prefix.rstrip('/')
+            
+            # Work backwards through the path hierarchy
+            path_parts = clean_prefix.split('/')
+            
+            for i in range(len(path_parts), 0, -1):
+                current_path = '/'.join(path_parts[:i])
+                folder_marker = current_path + '/'
+                
+                # Check if this folder marker exists
+                try:
+                    self.s3_client.head_object(Bucket=self.bucket_name, Key=folder_marker)
+                    
+                    # Check if the folder is now empty (no other objects with this prefix)
+                    response = self.s3_client.list_objects_v2(
+                        Bucket=self.bucket_name,
+                        Prefix=folder_marker,
+                        MaxKeys=1
+                    )
+                    
+                    # If no contents found, delete the empty folder marker
+                    if 'Contents' not in response or len(response['Contents']) == 0:
+                        self.s3_client.delete_object(
+                            Bucket=self.bucket_name,
+                            Key=folder_marker
+                        )
+                        logger.info(f"Cleaned up empty folder marker: {folder_marker}")
+                    else:
+                        # If folder still has contents, stop going up the hierarchy
+                        break
+                        
+                except ClientError as e:
+                    if e.response['Error']['Code'] == '404':
+                        # Folder marker doesn't exist, continue
+                        continue
+                    else:
+                        # Other error, log but don't fail the overall operation
+                        logger.warning(f"Error checking folder marker {folder_marker}: {str(e)}")
+                        continue
+                        
+        except Exception as e:
+            # Log error but don't fail the overall move operation
+            logger.warning(f"Error during empty folder cleanup: {str(e)}")
 
 s3_provider = S3Provider()

@@ -103,6 +103,19 @@ class BlobStorageProvider(ABC):
         """
         pass
 
+    @abstractmethod
+    def move_folder(self, source_prefix: str, destination_prefix: str) -> bool:
+        """Move a folder from source to destination within blob storage.
+        
+        Args:
+            source_prefix: Source folder prefix in blob storage (should end with /)
+            destination_prefix: Destination folder prefix in blob storage (should end with /)
+            
+        Returns:
+            bool: True if move was successful, False otherwise
+        """
+        pass
+
 
 def get_blob_storage_provider(provider_name: str) -> BlobStorageProvider:
     if provider_name == "s3":
