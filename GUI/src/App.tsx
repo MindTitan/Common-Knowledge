@@ -17,7 +17,7 @@ import AddAgency from 'pages/Agency/SaveAgency';
 
 // Import new API components
 import ApiList from 'pages/API';
-import ApiDetail from 'pages/API/APIDetail';
+import ApiDetail from 'pages/API/ApiDetail';
 
 import './locale/et_EE';
 

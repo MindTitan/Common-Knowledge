@@ -2,7 +2,6 @@ from pydantic import BaseModel, HttpUrl
 
 
 class BaseObject(BaseModel):
-    agency_name: str
     agency_id: str
     source_id: str
 
@@ -23,6 +22,7 @@ class SitemapCollectScrapperTask(BaseObject):
 
 class EntireSourceScrapperTask(BaseObject):
     pass
+
 
 class EestiScrapperTask(BaseObject):
     """Task for scraping all articles from Eesti.ee"""

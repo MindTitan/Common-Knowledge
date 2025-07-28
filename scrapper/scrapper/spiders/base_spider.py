@@ -86,6 +86,7 @@ class BaseSpider(Spider):
         super().__init__(*args, **kwargs)
 
         self.ua = UserAgent(platforms='desktop')
+        self.report_id = None
 
     def get_meta(self):
         return {

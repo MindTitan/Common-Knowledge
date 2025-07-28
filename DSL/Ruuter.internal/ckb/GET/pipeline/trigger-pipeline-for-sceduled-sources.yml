@@ -43,16 +43,6 @@ getOneSourceToRun:
     contentType: json
   result: sourceToRun
 
-getAgencyForSource:
-  maxRecursions: 999
-  call: http.get
-  args:
-    url: "[#CKB_RESQL]/agency/get_agency"
-    contentType: json
-    query:
-      base_id: ${sourceToRun.response.body[0].agencyBaseId}
-  result: agency
-
 triggerPipelineForSource:
   maxRecursions: 999
   template: "[#CKB_PROJECT_LAYER]/pipeline/trigger-scrapper-entire-source"
@@ -60,7 +50,6 @@ triggerPipelineForSource:
   body:
     source_id: ${sourceToRun.response.body[0].baseId}
     agency_id: ${sourceToRun.response.body[0].agencyBaseId}
-    agency_name: ${agency.response.body[0].name}
   result: res
   next: checkSourceToRunExists
 

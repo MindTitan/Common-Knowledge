@@ -48,7 +48,8 @@ def upload_file_sync(request: FileUploadRequest) -> dict:
         blob_storage_path = upload_service.upload_file_sync(request.source_file_path)
         return {
             "blob_storage_path": blob_storage_path,
-            "status": "completed"
+            "source_file_path": upload_service.clean_path(blob_storage_path),
+            "status": "completed",
         }
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

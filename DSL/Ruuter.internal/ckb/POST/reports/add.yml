@@ -60,10 +60,6 @@ createSourceRunReport:
       agency_name: ${agency_name}
       url: ${url}
       scraping_started_at: ${scraping_started_at}
-      scraping_finished_at: ${scraping_finished_at}
-      errors: ${errors}
-      scraping_log_url: ${scraping_log_url}
-      cleaning_log_url: ${cleaning_log_url}
   result: res
 
 returnSuccess:

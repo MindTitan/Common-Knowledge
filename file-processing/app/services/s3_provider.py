@@ -304,6 +304,17 @@ class S3Provider(BlobStorageProvider):
         except Exception as e:
             raise BlobStorageException(f"Failed to download folder: {str(e)}")
 
+    def clean_path(self, path: str) -> str:
+        clean_path = path
+        if path.startswith('s3://'):
+            # Extract key from s3://bucket/key format
+            parts = path.replace('s3://', '').split('/', 1)
+            if len(parts) > 1:
+                clean_path = parts[1]
+            else:
+                clean_path = parts[0]
+        return clean_path
+
     def generate_upload_urls(self, paths: List[str], content_type: Optional[str] = None, expires_in: Optional[int] = None) -> List[tuple[str, str, datetime]]:
         """Generate presigned upload URLs for multiple blob paths.
         
@@ -323,14 +334,7 @@ class S3Provider(BlobStorageProvider):
             
             for path in paths:
                 # Clean the blob_path - remove any s3:// prefix if present
-                clean_path = path
-                if path.startswith('s3://'):
-                    # Extract key from s3://bucket/key format
-                    parts = path.replace('s3://', '').split('/', 1)
-                    if len(parts) > 1:
-                        clean_path = parts[1]
-                    else:
-                        clean_path = parts[0]
+                clean_path = self.clean_path(path)
                 
                 params = {
                     'Bucket': self.bucket_name,

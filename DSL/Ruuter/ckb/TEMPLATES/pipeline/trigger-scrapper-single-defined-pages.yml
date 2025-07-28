@@ -1,6 +1,5 @@
 extractRequestData:
   assign:
-    agency_name: ${incoming.body.agency_name}
     agency_id: ${incoming.body.agency_id}
     source_id: ${incoming.body.source_id}
     source_files: ${incoming.body.source_files}
@@ -12,7 +11,6 @@ triggerScrapper:
     url: "[#CKB_SCRAPPER_SERVICE]/single-page-scrapper-task"
     contentType: json
     body:
-      agency_name: ${agency_name}
       agency_id: ${agency_id}
       source_id: ${source_id}
       urls: ${source_files}

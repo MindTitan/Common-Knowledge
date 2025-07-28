@@ -148,6 +148,10 @@ def upload_file_sync(source_file_path: str) -> str:
         raise ValueError(f"Failed to upload file: {str(e)}")
 
 
+def clean_path(path: str) -> str:
+    return storage_provider.clean_path(path)
+
+
 def upload_file_content(request: FileContentUploadRequest) -> FileContentUploadResponse:
     """Upload file content directly to blob storage."""
     try:

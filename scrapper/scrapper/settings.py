@@ -67,6 +67,9 @@ CONCURRENT_REQUESTS = 1
 # Configure item pipelines
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
+    "scrapper.pipelines.CreateSourceRunReportPipeline": 10,
+    "scrapper.pipelines.InitLoggingPipeline": 20,
+    "scrapper.pipelines.SetSourceStatusRunningPipeline": 30,
     "scrapper.pipelines.CreateDirectoryPipeline": 100,
     "scrapper.pipelines.MetadataPipeline": 200,
     "scrapper.pipelines.FilePipeline": 300,
@@ -74,6 +77,7 @@ ITEM_PIPELINES = {
     "scrapper.pipelines.CreateSourceFile": 500,
     "scrapper.pipelines.TriggerCleaningPipeline": 600,
     "scrapper.pipelines.ScrappingFinishedPipeline": 900,
+    "scrapper.pipelines.UploadLogsPipeline": 910,
 }
 
 # Enable and configure the AutoThrottle extension (disabled by default)

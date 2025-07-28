@@ -116,6 +116,10 @@ class BlobStorageProvider(ABC):
         """
         pass
 
+    @abstractmethod
+    def clean_path(self, path: str) -> str:
+        pass
+
 
 def get_blob_storage_provider(provider_name: str) -> BlobStorageProvider:
     if provider_name == "s3":

@@ -1,3 +1,4 @@
+import datetime
 import json
 import hashlib
 import os
@@ -170,3 +171,63 @@ class ScrappingFinishedPipeline:
             'source_id': task.source_id,
             'status': 'finished',
         })
+
+
+class InitLoggingPipeline:
+    def open_spider(self, spider: Spider):
+        pass
+
+
+class SetSourceStatusRunningPipeline:
+    def open_spider(self, spider: Spider):
+        if not hasattr(spider, 'task'):
+            return
+
+        spider: SitemapCollectSpider | SingleUrlSpider
+        task: BaseObject = spider.task
+
+        requests.post(f'{spider.settings.get('RUUTER_INTERNAL')}/ckb/source/update-status', json={
+            'source_id': task.source_id,
+            'status': 'running',
+        })
+
+
+class CreateSourceRunReportPipeline:
+    def open_spider(self, spider: Spider):
+        if not hasattr(spider, 'task'):
+            return
+
+        task: BaseObject = spider.task
+
+        agency_name = requests.get(
+            f'{spider.settings.get('RUUTER_INTERNAL')}/ckb/agency/get',
+            params={'baseId': task.agency_id}
+        ).json()['response'][0]['name']
+        spider.logger.info(f'agency_name: {agency_name}')
+        url = requests.get(
+            f'{spider.settings.get('RUUTER_INTERNAL')}/ckb/source/get',
+            params={'baseId': task.source_id}
+        ).json()['response'][0]['url']
+
+
+        report_id = requests.post(f'{spider.settings.get('RUUTER_INTERNAL')}/ckb/reports/add', json={
+            'agencyBaseId': task.agency_id,
+            'sourceBaseId': task.source_id,
+            'agencyName': agency_name,
+            'url': url,
+            'scrapingStartedAt': datetime.datetime.now(datetime.UTC).isoformat(),
+            'scrapingFinishedAt': None,
+            'error': 0,
+            'scrapingLogUrl': None,
+            'cleaningLogUrl': None
+        }).json()['response'][0]['baseId']
+
+        spider.report_id = report_id
+
+
+
+class UploadLogsPipeline:
+    def close_spider(self, spider: Spider):
+        if not hasattr(spider, 'report_id'):
+            return
+

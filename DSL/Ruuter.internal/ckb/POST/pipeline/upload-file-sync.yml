@@ -22,5 +22,5 @@ uploadFile:
   result: res
 
 returnResult:
-  return: ${res.response.body.blob_storage_path}
+  return: ${res.response.body.source_file_path}
 
