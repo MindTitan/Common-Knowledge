@@ -14,6 +14,11 @@ import Settings from 'pages/Settings';
 import Reports from 'pages/Reports';
 import Report from 'pages/Reports/Report';
 import AddAgency from 'pages/Agency/SaveAgency';
+
+// Import new API components
+import ApiList from 'pages/API';
+import ApiDetail from 'pages/API/APIDetail';
+
 import './locale/et_EE';
 
 const customJwtCookieKey = 'customJwtCookie';
@@ -57,13 +62,25 @@ const App: FC = () => {
     <Routes>
       <Route element={<CKBLayout />}>
         <Route index element={<Navigate to="/agency" />} />
+
+        {/* Agency routes */}
         <Route path="/agency" element={<AgencyList />} />
         <Route path="/agency/add" element={<AddAgency />} />
         <Route path="/agency/:id" element={<Agency />} />
+
+        {/* API Integration routes */}
+        <Route path="/api" element={<ApiList />} />
+        <Route path="/api/:id" element={<ApiDetail />} />
+        <Route path="/api/:id/schedule" element={<Settings />} />
+
         {/* Unified files route */}
         <Route path="/source/:id/files" element={<Files />} />
+
+        {/* Reports routes */}
         <Route path="/reports" element={<Reports />} />
         <Route path="/reports/:id" element={<Report />} />
+
+        {/* Settings route */}
         <Route path="/source/:id/schedule" element={<Settings />} />
       </Route>
     </Routes>

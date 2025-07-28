@@ -41,7 +41,7 @@
     "startDate": "Start date",
     "endDate": "End date",
     "preview": "Preview",
-    "logout": "Logout",
+    "logout": "Log out",
     "anonymous": "Anonymous",
     "csaStatus": "Customer support status",
     "present": "Present",
@@ -74,7 +74,8 @@
   },
   "menu": {
     "data": "Data",
-    "reports": "Reports"
+    "reports": "Reports",
+    "apiIntegrations": "API integrations"
   },
   "chat": {
     "userTyping": "User Typing",
@@ -469,6 +470,7 @@
     "newMessage": "New message."
   },
   "knowledgeBase": {
+    "id": "ID",
     "title": "Common knowledge base",
     "agency": "Agency",
     "agencies": "Agencies",

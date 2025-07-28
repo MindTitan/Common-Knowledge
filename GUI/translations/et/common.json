@@ -74,7 +74,8 @@
   },
   "menu": {
     "data": "Andmed",
-    "reports": "Aruanded"
+    "reports": "Aruanded",
+    "apiIntegrations": "API integratsioonid"
   },
   "chat": {
     "userTyping": "Kasutaja kirjutab",
@@ -469,6 +470,7 @@
     "newMessage": "Uus sõnum."
   },
   "knowledgeBase": {
+    "id": "ID",
     "title": "Ühine teadmistebaas",
     "agency": "Asutus",
     "agencies": "Agentuurid",
