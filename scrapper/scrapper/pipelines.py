@@ -129,6 +129,7 @@ class CreateSourceFile:
         task: BaseObject = spider.task
 
         res = requests.post(f'{spider.settings.get('RUUTER_INTERNAL')}/ckb/source-file/add-scrapped-file', json={
+            'agency_id': task.agency_id,
             'source_id': task.source_id,
             'url': item.metadata.source_url,
             'page_title': item.metadata.page_title,
