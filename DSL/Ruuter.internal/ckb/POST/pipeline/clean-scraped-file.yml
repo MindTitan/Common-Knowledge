@@ -20,6 +20,9 @@ declaration:
       - field: source_file_id
         type: string
         description: "id of source file"
+      - field: logs_path
+        type: string
+        description: "logs path for cleaning task"
 
 
 cleanScrapedData:
@@ -30,6 +33,7 @@ cleanScrapedData:
     meta_data_path: ${incoming.body.meta_data_path}
     directory_path: ${incoming.body.directory_path}
     source_file_id: ${incoming.body.source_file_id}
+    logs_path: ${incoming.body.logs_path}
   result: res
 
 

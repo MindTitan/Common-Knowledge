@@ -91,12 +91,18 @@ class FilePipeline:
 
 class TriggerCleaningPipeline:
     def process_item(self, item, spider: Spider):
+        if not hasattr(spider, 'report_id'):
+            return item
+        spider: BaseSpider
         if not isinstance(item, ScrappedItem):
             return item
+
+        path = get_logs_path_for_cleaning(spider)
 
         requests.post(
             f"{spider.settings.get('RUUTER_INTERNAL')}/ckb/pipeline/clean-scraped-file",
             json={
+                'logs_path': path,
                 'file_path': item.file_path,
                 'meta_data_path': item.metadata_path,
                 'directory_path': item.path,
@@ -214,9 +220,15 @@ class CreateSourceRunReportPipeline:
         spider.report_id = report_id
 
 
-def get_logs_path(spider: BaseSpider):
+def get_logs_path_for_scraper(spider: BaseSpider):
     scrapper_directory = spider.settings.get('SCRAPED_DIRECTORY', '/scrapped-data')
     path = f'logs/scraper/{spider.report_id}.log'
+    return os.path.join(scrapper_directory, path)
+
+
+def get_logs_path_for_cleaning(spider: BaseSpider):
+    scrapper_directory = spider.settings.get('SCRAPED_DIRECTORY', '/scrapped-data')
+    path = f'logs/cleaning/{spider.report_id}.log'
     return os.path.join(scrapper_directory, path)
 
 
@@ -225,7 +237,7 @@ class InitLoggingPipeline:
         if not hasattr(spider, 'report_id') or spider.report_id is None:
             return
 
-        path = get_logs_path(spider)
+        path = get_logs_path_for_scraper(spider)
         path_obj = Path(path)
         path_obj.parent.mkdir(parents=True, exist_ok=True)
         path_obj.touch(exist_ok=True)
@@ -238,6 +250,11 @@ class InitLoggingPipeline:
         )
         handler.setFormatter(formatter)
 
+        cleaning_path = get_logs_path_for_cleaning(spider)
+        path_obj = Path(cleaning_path)
+        path_obj.parent.mkdir(parents=True, exist_ok=True)
+        path_obj.touch(exist_ok=True)
+
 
 class UploadLogsPipeline:
     def close_spider(self, spider: Spider):
@@ -246,7 +263,7 @@ class UploadLogsPipeline:
 
         spider: BaseSpider
 
-        path = get_logs_path(spider)
+        path = get_logs_path_for_scraper(spider)
         r = requests.post(
             f"{spider.settings.get('RUUTER_INTERNAL')}/ckb/pipeline/upload-file-sync",
             json={
@@ -257,9 +274,19 @@ class UploadLogsPipeline:
         os.remove(path)
 
 
+        path = get_logs_path_for_cleaning(spider)
+        r = requests.post(
+            f"{spider.settings.get('RUUTER_INTERNAL')}/ckb/pipeline/upload-file-sync",
+            json={
+                'source_file_path': path,
+            }
+        )
+        cleaning_log_url = r.json()['response']
+        os.remove(path)
+
         requests.post(f'{spider.settings.get('RUUTER_INTERNAL')}/ckb/reports/update', json={
             'baseId': spider.report_id,
             'scrapingFinishedAt': datetime.datetime.now(datetime.UTC).isoformat(),
             'scrapingLogUrl': scraping_log_url,
-            'cleaningLogUrl': ''
+            'cleaningLogUrl': cleaning_log_url,
         })
