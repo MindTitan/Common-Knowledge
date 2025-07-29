@@ -31,7 +31,7 @@ CONCURRENT_REQUESTS = 1
 # See also autothrottle settings and docs
 #DOWNLOAD_DELAY = 3
 # The download delay setting will honor only one of:
-#CONCURRENT_REQUESTS_PER_DOMAIN = 16
+CONCURRENT_REQUESTS_PER_DOMAIN = 1
 #CONCURRENT_REQUESTS_PER_IP = 16
 
 # Disable cookies (enabled by default)
@@ -109,10 +109,10 @@ RUUTER_INTERNAL = os.environ.get('RUUTER_INTERNAL', "http://ruuter-internal:8089
 DOWNLOAD_DELAY = 0.1
 
 DOWNLOAD_HANDLERS = {
-    "http": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
-    "https": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
+    "http": "scrapper.download_handler.DownloadHandler",
+    "https": "scrapper.download_handler.DownloadHandler",
 }
 PLAYWRIGHT_DEFAULT_NAVIGATION_TIMEOUT = 10_000
 TWISTED_REACTOR = "twisted.internet.asyncioreactor.AsyncioSelectorReactor"
 PLAYWRIGHT_MAX_CONTEXTS = 1
-
+PLAYWRIGHT_MAX_PAGES_PER_CONTEXT = 1

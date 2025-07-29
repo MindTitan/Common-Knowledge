@@ -102,6 +102,9 @@ class SitemapCollectSpider(BaseSpider):
 
     async def parse(self, response: Response, **kwargs):
         async for scrapped_item in super().parse(response, **kwargs):
+            if response.status is None or response.status >= 300 or response.status < 200:
+                continue
+
             if response.url in self.scraped_urls:
                 continue
 
@@ -115,13 +118,15 @@ class SitemapCollectSpider(BaseSpider):
                 continue
 
             if scrapped_item.metadata.file_type not in self.settings.get('ALLOWED_FILETYPES'):
-                # TODO: place log here
-                continue
+                self.logger.info(
+                    f'Skipping {scrapped_item.metadata.source_url} because file type '
+                    f'is {scrapped_item.metadata.file_type} and it is not allowed')
 
             if scrapped_item.hash in self.hashes:
-                # TODO: place log here
-                continue
-
+                self.logger.info(
+                    f'Skipping {scrapped_item.metadata.source_url} because no new content was found '
+                    f'and it was already scraped'
+                )
             self.hashes.add(scrapped_item.hash)
 
             yield scrapped_item

@@ -24,20 +24,19 @@ class SpecifiedPagesSpider(BaseSpider):
 
 
     async def parse(self, response: Response, **kwargs):
+        base_id = None
+        hashed = None
+        self.logger.info(f'number of urls: {len(self.urls)}')
+        for source_file in self.urls:
+            if source_file.url.unicode_string() == response.request.url:
+                base_id = source_file.id
+                hashed = source_file.hash
+
         async for obj in super().parse(response, **kwargs):
-            base_id = None
-            hashed = None
-            self.logger.info(f'number of urls: {len(self.urls)}')
-            for source_file in self.urls:
-                if source_file.url.unicode_string() == response.request.url:
-                    base_id = source_file.id
-                    hashed = source_file.hash
+            if response.status is None or response.status >= 300 or response.status < 200:
+                break
 
             obj.source_file_id = base_id
-
-            self.logger.info(f'url is {response.request.url} vs {self.urls[-1].url.unicode_string()}')
-            self.logger.info(f'base id is {base_id}')
-            self.logger.info(f'hashed is {hashed} vs {obj.hash}')
 
             if hashed is not None and obj.hash == hashed:
                 self.logger.info(
@@ -45,11 +44,39 @@ class SpecifiedPagesSpider(BaseSpider):
                 )
                 requests.post(
                     f"{self.settings.get('RUUTER_INTERNAL')}/ckb/source-file/update-scrapped-file-stop-scrapping",
-                    json={'base_id': base_id}
+                    json={'base_id': base_id, 'status': 'finished'},
+                )
+                continue
+
+            if obj.metadata.file_type not in self.settings.get('ALLOWED_FILETYPES'):
+                self.logger.info(
+                    f'Skipping {obj.url} because file type '
+                    f'is {obj.metadata.file_type} and it is not allowed')
+                requests.post(
+                    f"{self.settings.get('RUUTER_INTERNAL')}/ckb/source-file/update-scrapped-file-stop-scrapping",
+                    json={'base_id': base_id, 'status': 'failed'},
+                )
+                self.log_error_to_source_run_page(
+                    response.request, 'content',
+                    f'new content does not match allowed file type (got {obj.metadata.file_type})'
                 )
                 continue
 
             yield obj
+
+
+        if response.status is None or response.status >= 300 or response.status < 200:
+            self.logger.info(
+                f'{response.request.url} Not found with status code {response.status}'
+            )
+            requests.post(
+                f"{self.settings.get('RUUTER_INTERNAL')}/ckb/source-file/update-scrapped-file-stop-scrapping",
+                json={'base_id': base_id, 'status': 'not_found'},
+            )
+            self.log_error_to_source_run_page(
+                response.request, 'http',
+                f'invalid status code: {response.status}'
+            )
 
         with suppress(StopIteration):
             yield Request(

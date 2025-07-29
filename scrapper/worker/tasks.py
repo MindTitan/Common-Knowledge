@@ -9,12 +9,6 @@ from worker.utils import un_json
 
 app = Celery('ckb', broker=settings.broker_url.unicode_string())
 
-# app.conf.update(
-#     task_serializer='pickle',
-#     result_serializer='pickle',
-#     accept_content=['pickle'],
-# )
-
 
 @app.task
 @un_json(SpecifiedLinksScrapeTask)
@@ -24,7 +18,6 @@ def specified_links_scrapper_task(task: SpecifiedLinksScrapeTask):
 
     p = subprocess.Popen(['python', 'run_specified_links_scrapper.py', escaped_version])
     p.wait()
-    # todo: catch logs here
 
 
 @app.task

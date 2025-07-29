@@ -12,6 +12,7 @@ from itemadapter import ItemAdapter
 from scrapy import Spider
 
 from api.utils import get_path_for_task
+from scrapper.utils import catch_error_process_item, catch_error_spider
 from scrapper.spiders.base_spider import BaseSpider
 from scrapper.items import ScrappedItem
 from api.models import BaseObject
@@ -27,6 +28,7 @@ def get_path_for_scrapped_item(item: ScrappedItem, spider: BaseSpider) -> str:
 
 
 class CreateDirectoryPipeline:
+    @catch_error_process_item
     def process_item(self, item, spider: Spider):
         if not isinstance(item, ScrappedItem):
             return item
@@ -43,6 +45,7 @@ class CreateDirectoryPipeline:
 
 
 class MetadataPipeline:
+    @catch_error_process_item
     def process_item(self, item, spider: Spider):
         if not isinstance(item, ScrappedItem):
             return item
@@ -67,6 +70,7 @@ class MetadataPipeline:
 
 
 class FilePipeline:
+    @catch_error_process_item
     def process_item(self, item, spider: Spider):
         if not isinstance(item, ScrappedItem):
             return item
@@ -90,6 +94,7 @@ class FilePipeline:
 
 
 class TriggerCleaningPipeline:
+    @catch_error_process_item
     def process_item(self, item, spider: Spider):
         if not hasattr(spider, 'report_id'):
             return item
@@ -107,6 +112,10 @@ class TriggerCleaningPipeline:
                 'meta_data_path': item.metadata_path,
                 'directory_path': item.path,
                 'source_file_id': item.source_file_id,
+                'url': item.metadata.source_url,
+                'source_base_id': spider.task.source_id,
+                'agency_base_id': spider.task.agency_id,
+                'source_run_report_base_id': spider.report_id,
             }
         )
 
@@ -116,6 +125,7 @@ class TriggerCleaningPipeline:
 
 
 class CreateSourceFile:
+    @catch_error_process_item
     def process_item(self, item, spider: Spider):
         if not hasattr(spider, 'task'):
             return item
@@ -142,6 +152,7 @@ class CreateSourceFile:
 
 
 class UpdateSourceFile:
+    @catch_error_process_item
     def process_item(self, item, spider: Spider):
         if not isinstance(item, ScrappedItem):
             return item
@@ -159,6 +170,7 @@ class UpdateSourceFile:
 
 
 class ScrappingFinishedPipeline:
+    @catch_error_spider
     def close_spider(self, spider: Spider):
         if not hasattr(spider, 'task'):
             return
@@ -174,6 +186,7 @@ class ScrappingFinishedPipeline:
 
 
 class SetSourceStatusRunningPipeline:
+    @catch_error_spider
     def open_spider(self, spider: Spider):
         if not hasattr(spider, 'task'):
             return
@@ -188,6 +201,7 @@ class SetSourceStatusRunningPipeline:
 
 
 class CreateSourceRunReportPipeline:
+    @catch_error_spider
     def open_spider(self, spider: Spider):
         if not hasattr(spider, 'task'):
             return
@@ -233,6 +247,7 @@ def get_logs_path_for_cleaning(spider: BaseSpider):
 
 
 class InitLoggingPipeline:
+    @catch_error_spider
     def open_spider(self, spider: Spider | BaseSpider):
         if not hasattr(spider, 'report_id') or spider.report_id is None:
             return
@@ -257,6 +272,7 @@ class InitLoggingPipeline:
 
 
 class UploadLogsPipeline:
+    @catch_error_spider
     def close_spider(self, spider: Spider):
         if not hasattr(spider, 'report_id'):
             return

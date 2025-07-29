@@ -5,6 +5,10 @@ extractRequestData:
     directory_path: ${incoming.body.directory_path}
     source_file_id: ${incoming.body.source_file_id}
     logs_path: ${incoming.body.logs_path}
+    url: ${incoming.body.url}
+    source_base_id: ${incoming.body.source_base_id}
+    agency_base_id: ${incoming.body.agency_base_id}
+    source_run_report_base_id: ${incoming.body.source_run_report_base_id}
 
 
 cleanData:
@@ -17,6 +21,10 @@ cleanData:
       directory_path: ${directory_path}
       source_file_id: ${source_file_id}
       logs_path: ${logs_path}
+      url: ${url}
+      source_base_id: ${source_base_id}
+      agency_base_id: ${agency_base_id}
+      source_run_report_base_id: ${source_run_report_base_id}
   result: cleanedResult
 
 

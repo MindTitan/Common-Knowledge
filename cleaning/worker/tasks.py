@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 
 from api.config import settings
 from api.models import EntityToClean
-
+from worker.utils import catch_error
 
 logger = logging.getLogger(__name__)
 
@@ -40,56 +40,57 @@ def set_up_logging(entity: EntityToClean):
 
 
 def clean_file_task(entity: EntityToClean):
-    set_up_logging(entity)
-    logger.info(f'Cleaning file {entity.file_path.as_posix()}')
-    with entity.meta_data_path.open('r') as f:
-        metadata = json.load(f)
+    with catch_error(entity):
+        set_up_logging(entity)
+        logger.info(f'Cleaning file {entity.file_path.as_posix()}')
+        with entity.meta_data_path.open('r') as f:
+            metadata = json.load(f)
 
-    logger.info(f"loaded metadata for {entity.file_path.as_posix()}")
+        logger.info(f"loaded metadata for {entity.file_path.as_posix()}")
 
-    if metadata['file_type'] == '.html':
-        cleaned_text = clean_html(entity)
-        logger.info(f'Cleaned as html for {entity.file_path.as_posix()}')
-    else:
-        cleaned_text = clean_any_file(entity)
-        logger.info(f'Cleaned as unstructured file for {entity.file_path.as_posix()}')
+        if metadata['file_type'] == '.html':
+            cleaned_text = clean_html(entity)
+            logger.info(f'Cleaned as html for {entity.file_path.as_posix()}')
+        else:
+            cleaned_text = clean_any_file(entity)
+            logger.info(f'Cleaned as unstructured file for {entity.file_path.as_posix()}')
 
-    cleaned_text_filename = entity.directory_path / 'cleaned.txt'
+        cleaned_text_filename = entity.directory_path / 'cleaned.txt'
 
-    with cleaned_text_filename.open("w") as f:
-        f.write(cleaned_text)
+        with cleaned_text_filename.open("w") as f:
+            f.write(cleaned_text)
 
 
-    r = requests.post(
-        f"{settings.ruuter_internal}/ckb/pipeline/upload-file-sync",
-        json={
-            'source_file_path': cleaned_text_filename.as_posix(),
-        }
-    )
-    uploaded_cleaned_text_url = r.json()['response']
+        r = requests.post(
+            f"{settings.ruuter_internal}/ckb/pipeline/upload-file-sync",
+            json={
+                'source_file_path': cleaned_text_filename.as_posix(),
+            }
+        )
+        uploaded_cleaned_text_url = r.json()['response']
 
-    logger.info(f'Saved cleaned text for {entity.file_path.as_posix()}')
+        logger.info(f'Saved cleaned text for {entity.file_path.as_posix()}')
 
-    cleaned_metadata_filename = entity.directory_path / "cleaned.meta.json"
-    with cleaned_metadata_filename.open("w") as f:
-        metadata['metadata']['cleaned'] = True
-        json.dump(metadata, f)
+        cleaned_metadata_filename = entity.directory_path / "cleaned.meta.json"
+        with cleaned_metadata_filename.open("w") as f:
+            metadata['metadata']['cleaned'] = True
+            json.dump(metadata, f)
 
-    r = requests.post(
-        f"{settings.ruuter_internal}/ckb/pipeline/upload-file-sync",
-        json={
-            'source_file_path': cleaned_metadata_filename.as_posix(),
-        }
-    )
-    uploaded_cleaned_metadata_url = r.json()['response']
+        r = requests.post(
+            f"{settings.ruuter_internal}/ckb/pipeline/upload-file-sync",
+            json={
+                'source_file_path': cleaned_metadata_filename.as_posix(),
+            }
+        )
+        uploaded_cleaned_metadata_url = r.json()['response']
 
-    logger.info(f'Saved cleaned metadata for {entity.file_path.as_posix()}')
+        logger.info(f'Saved cleaned metadata for {entity.file_path.as_posix()}')
 
-    requests.post(
-        f"{settings.ruuter_internal}/ckb/source-file/update-cleaned-file",
-        json={
-            'base_id': entity.source_file_id,
-            'cleaned_data_url': uploaded_cleaned_text_url,
-            'cleaned_metadata_url': uploaded_cleaned_metadata_url,
-        }
-    )
+        requests.post(
+            f"{settings.ruuter_internal}/ckb/source-file/update-cleaned-file",
+            json={
+                'base_id': entity.source_file_id,
+                'cleaned_data_url': uploaded_cleaned_text_url,
+                'cleaned_metadata_url': uploaded_cleaned_metadata_url,
+            }
+        )

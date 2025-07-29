@@ -12,79 +12,16 @@ from fake_useragent import UserAgent
 from scrapy import Spider, Request
 from scrapy.exceptions import CloseSpider
 from scrapy.http import Response
+from twisted.python.failure import Failure
 
 from api.models import BaseObject
 from scrapper.items import FileItem, MetadataItem, Metadata, ScrappedItem
-
+from scrapper.utils import send_error
 
 
 class BaseSpider(Spider):
-    # start_urls = ['https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf']
-    # start_urls = ['https://calibre-ebook.com/downloads/demos/demo.docx']
-    start_urls = [
-        # "https://www.terviseamet.ee",
-        # "https://www.tervisekassa.ee",
-        # "https://www.ravimiamet.ee",
-        # "https://www.sm.ee",
-        # "https://www.sotsiaalkindlustusamet.ee",
-        # "https://www.tootukassa.ee",
-        # "https://elron.ee/",
-        # "https://www.transpordiamet.ee", # ??????????????  -- requires selenium
-
-        # "https://www.airport.ee",
-        # "https://www.ts.ee",??????????????
-       # "https://www.lkf.ee/et",
-       #  "https://www.fi.ee",
-       #  "https://www.eestipank.ee",
-       #  "https://www.kredex.ee",
-       #  "https://www.emta.ee",
-       #  "https://www.fin.ee",
-    #     "https://www.ti.ee",
-    #     "https://www.eakl.ee",
-    #     "https://www.tooelu.ee",
-    #     "https://www.minukarjaar.ee",
-    #     "https://www.just.ee",
-    #     "https://www.notar.ee",
-    #     "https://www.kohus.ee",
-    #     "https://www.kpkoda.ee",
-    #     "https://www.riigiteataja.ee",
-    #     "https://www.korruptsioon.ee",
-    #     "https://www.maaamet.ee",
-    #     "https://www.tallinn.ee/et/ehitus",
-    #     "https://www.hm.ee",
-    #     "https://www.harno.ee",
-    #     "https://www.politsei.ee",
-    #     "https://www.valimised.ee",
-    #     "https://integratsioon.ee/",
-    #     "https://www.siseministeerium",
-    #     "https://www.tja.ee",
-    #     "https://www.kaitseministeerium.ee",
-    #     "https://www.mil.ee",
-    #     "https://www.kaitseliit.ee",
-    #     "https://www.kriis.ee",
-    #     "https://www.rescue.ee",
-    #     "https://www.kapo.ee",
-    #     "https://www.kul.ee",
-    #     "https://www.kik.ee",
-    #     "https://www.envir.ee",
-    #     "https://www.keskkonnaagentuur.ee",
-    #     "https://www.keskkonnaamet.ee",
-    #     "https://www.pria.ee",
-    #     "https://www.agri.ee",
-    #     "https://www.peaasi.ee",
-    #     "https://www.lasteabi.ee",
-    #     "https://www.vaimnetervis.ee",
-    #     "https://koolirahu.lastekaitseliit.ee/et/",
-    #     "https://www.itvaatlik.ee",
-    #     "https://www.riigikogu.ee",
-    #     "https://www.muinsuskaitseamet.ee",
-    #     "https://www.eesti.ee",
-    #     "https://www.epa.ee",
-    ]
-    # custom_settings = {
-    #     'ROBOTSTXT_OBEY': False
-    # }
     task: BaseObject
+    handle_httpstatus_list = [*range(600)]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -146,7 +83,24 @@ class BaseSpider(Spider):
             await page.context.close()
             self.logger.info(f'Page closed {response.url}')
 
-    async def errback(self, failure):
+    def log_error_to_source_run_page(self, request, error_type: str, error_message: str):
+        if isinstance(request, str):
+            url = request
+        else:
+            url = request.url
+
+        send_error(
+            self.settings.get('RUUTER_INTERNAL'),
+            url, error_type, error_message,
+            self.task.source_id, self.task.agency_id, self.report_id
+        )
+
+
+    async def errback(self, failure: Failure):
+        if not hasattr(failure, 'request'):
+            return
+
+        self.log_error_to_source_run_page(failure.request, error_type='scrapper', error_message=str(failure))
         page = failure.request.meta.get("playwright_page")
         if page is not None:
             await page.close()
@@ -154,6 +108,7 @@ class BaseSpider(Spider):
     async def parse(self, response: Response, **kwargs):
         async with self.close_page(response) as page:
             self.check_source_is_stopping()
+
             page: Page
 
             file_extension = self.guess_file_extension(
