@@ -12,7 +12,7 @@ FROM source_run_report
 WHERE base_id = :base_id::UUID
   AND updated_at = (
       SELECT MAX(updated_at)
-      FROM source
+      FROM source_run_report
       WHERE base_id = :base_id::UUID
   )
   AND is_deleted = FALSE;

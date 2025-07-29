@@ -2,15 +2,17 @@ import datetime
 import json
 import os
 import shutil
+import logging
 
 import requests
+
+from pathlib import Path
 
 from itemadapter import ItemAdapter
 from scrapy import Spider
 
 from api.utils import get_path_for_task
 from scrapper.spiders.base_spider import BaseSpider
-
 from scrapper.items import ScrappedItem
 from api.models import BaseObject
 
@@ -41,7 +43,6 @@ class CreateDirectoryPipeline:
 
 
 class MetadataPipeline:
-
     def process_item(self, item, spider: Spider):
         if not isinstance(item, ScrappedItem):
             return item
@@ -166,11 +167,6 @@ class ScrappingFinishedPipeline:
         requests.get(f'{spider.settings.get('RUUTER_INTERNAL')}/ckb/pipeline/scheduler-check-for-unscheduled-records')
 
 
-class InitLoggingPipeline:
-    def open_spider(self, spider: Spider):
-        pass
-
-
 class SetSourceStatusRunningPipeline:
     def open_spider(self, spider: Spider):
         if not hasattr(spider, 'task'):
@@ -218,9 +214,52 @@ class CreateSourceRunReportPipeline:
         spider.report_id = report_id
 
 
+def get_logs_path(spider: BaseSpider):
+    scrapper_directory = spider.settings.get('SCRAPED_DIRECTORY', '/scrapped-data')
+    path = f'logs/scraper/{spider.report_id}.log'
+    return os.path.join(scrapper_directory, path)
+
+
+class InitLoggingPipeline:
+    def open_spider(self, spider: Spider | BaseSpider):
+        if not hasattr(spider, 'report_id') or spider.report_id is None:
+            return
+
+        path = get_logs_path(spider)
+        path_obj = Path(path)
+        path_obj.parent.mkdir(parents=True, exist_ok=True)
+        path_obj.touch(exist_ok=True)
+
+        handler = logging.FileHandler(path)
+        logging.getLogger().addHandler(handler)
+
+        formatter = logging.Formatter(
+            "[%(asctime)s] %(levelname)s [%(name)s.%(funcName)s:%(lineno)d] %(message)s"
+        )
+        handler.setFormatter(formatter)
+
 
 class UploadLogsPipeline:
     def close_spider(self, spider: Spider):
         if not hasattr(spider, 'report_id'):
             return
 
+        spider: BaseSpider
+
+        path = get_logs_path(spider)
+        r = requests.post(
+            f"{spider.settings.get('RUUTER_INTERNAL')}/ckb/pipeline/upload-file-sync",
+            json={
+                'source_file_path': path,
+            }
+        )
+        scraping_log_url = r.json()['response']
+        os.remove(path)
+
+
+        requests.post(f'{spider.settings.get('RUUTER_INTERNAL')}/ckb/reports/update', json={
+            'baseId': spider.report_id,
+            'scrapingFinishedAt': datetime.datetime.now(datetime.UTC).isoformat(),
+            'scrapingLogUrl': scraping_log_url,
+            'cleaningLogUrl': ''
+        })

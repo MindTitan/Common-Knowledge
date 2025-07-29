@@ -23,17 +23,16 @@ declaration:
 
 extractRequestData:
   assign:
-    base_id: "${incoming.body.baseId}"
-    scraping_finished_at: "${incoming.body.scrapingFinishedAt}"
-    scraping_log_url: "${incoming.body.scrapingLogUrl}"
-    cleaning_log_url: "${incoming.body.cleaningLogUrl}"
+    base_id: ${incoming.body.baseId}
+    scraping_finished_at: ${incoming.body.scrapingFinishedAt}
+    scraping_log_url: ${incoming.body.scrapingLogUrl}
+    cleaning_log_url: ${incoming.body.cleaningLogUrl}
 
-createSourceRunReport:
+updateSourceRunReport:
   call: http.post
   args:
     url: "[#CKB_RESQL]/reports/update_source_run_report"
-    headers:
-      type: json
+    contentType: json
     body:
       base_id: ${base_id}
       scraping_finished_at: ${scraping_finished_at}
