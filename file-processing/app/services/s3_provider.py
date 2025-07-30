@@ -527,6 +527,124 @@ class S3Provider(BlobStorageProvider):
         except Exception as e:
             raise BlobStorageException(f"Folder move operation failed: {str(e)}")
 
+    def delete_file(self, path: str) -> bool:
+        """Delete a file from S3.
+        
+        Args:
+            path: File path in S3 to delete
+            
+        Returns:
+            bool: True if deletion was successful, False otherwise
+        """
+        try:
+            # Check if file exists before attempting deletion
+            if not self.file_exists(path):
+                raise BlobStorageException(f"File not found: {path}")
+            
+            # Delete the file
+            self.s3_client.delete_object(
+                Bucket=self.bucket_name,
+                Key=path
+            )
+            
+            # Verify the file was deleted
+            if self.file_exists(path):
+                raise BlobStorageException("File deletion verification failed")
+            
+            return True
+            
+        except NoCredentialsError:
+            raise BlobStorageException("AWS credentials not found")
+        except ClientError as e:
+            raise BlobStorageException(f"S3 delete operation failed: {str(e)}")
+        except BlobStorageException:
+            raise  # Re-raise blob storage exceptions
+        except Exception as e:
+            raise BlobStorageException(f"Delete operation failed: {str(e)}")
+
+    def delete_folder(self, prefix: str) -> bool:
+        """Delete a folder and all its contents from S3.
+        
+        Args:
+            prefix: Folder prefix in S3 (should end with /)
+            
+        Returns:
+            bool: True if deletion was successful, False otherwise
+        """
+        try:
+            # Ensure prefix ends with / for proper folder handling
+            if not prefix.endswith('/'):
+                prefix += '/'
+            
+            # List all objects in the folder
+            all_objects = []
+            paginator = self.s3_client.get_paginator('list_objects_v2')
+            
+            page_iterator = paginator.paginate(
+                Bucket=self.bucket_name,
+                Prefix=prefix
+            )
+            
+            for page in page_iterator:
+                if 'Contents' in page:
+                    for obj in page['Contents']:
+                        all_objects.append({'Key': obj['Key']})
+            
+            if not all_objects:
+                # No objects found - folder doesn't exist or is already empty
+                logger.info(f"No objects found for prefix {prefix}")
+                return True
+            
+            # Delete objects in batches (S3 allows up to 1000 objects per batch)
+            batch_size = 1000
+            deleted_count = 0
+            
+            for i in range(0, len(all_objects), batch_size):
+                batch = all_objects[i:i + batch_size]
+                
+                response = self.s3_client.delete_objects(
+                    Bucket=self.bucket_name,
+                    Delete={
+                        'Objects': batch,
+                        'Quiet': False  # Return info about deleted objects
+                    }
+                )
+                
+                # Check for any errors in the batch deletion
+                if 'Errors' in response and response['Errors']:
+                    error_messages = []
+                    for error in response['Errors']:
+                        error_messages.append(f"Key: {error['Key']}, Code: {error['Code']}, Message: {error['Message']}")
+                    raise BlobStorageException(f"Batch delete errors: {'; '.join(error_messages)}")
+                
+                # Count successfully deleted objects
+                if 'Deleted' in response:
+                    deleted_count += len(response['Deleted'])
+            
+            logger.info(f"Successfully deleted {deleted_count} objects from folder {prefix}")
+            
+            # Verify deletion by checking if any objects still exist with this prefix
+            verify_response = self.s3_client.list_objects_v2(
+                Bucket=self.bucket_name,
+                Prefix=prefix,
+                MaxKeys=1
+            )
+            
+            if 'Contents' in verify_response and len(verify_response['Contents']) > 0:
+                remaining_objects = [obj['Key'] for obj in verify_response['Contents']]
+                raise BlobStorageException(f"Deletion verification failed. Remaining objects: {remaining_objects}")
+            
+            return True
+            
+        except NoCredentialsError:
+            raise BlobStorageException("AWS credentials not found")
+        except ClientError as e:
+            raise BlobStorageException(f"S3 folder delete operation failed: {str(e)}")
+        except BlobStorageException:
+            raise  # Re-raise blob storage exceptions
+        except Exception as e:
+            raise BlobStorageException(f"Folder delete operation failed: {str(e)}")
+        
     def _cleanup_empty_folders(self, folder_prefix: str) -> None:
         """Clean up empty folder markers after moving folder contents.
         

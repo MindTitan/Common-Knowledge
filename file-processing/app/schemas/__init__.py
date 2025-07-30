@@ -113,7 +113,7 @@ class DownloadTaskStatusResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-# New schemas for delete functionality
+# Schemas for delete functionality from local volume (existing)
 class FileDeleteItem(BaseModel):
     local_path: str
 
@@ -130,94 +130,6 @@ class DeleteFromVolumeResponse(BaseModel):
     successful_deletions: int
     failed_deletions: int
     results: List[FileDeleteResult]
-
-# Schemas for zip and upload functionality
-class FolderZipItem(BaseModel):
-    s3_path: str  # Source folder path in S3
-    s3_zip_path: str  # Destination zip file path in S3
-    excluded_folders: Optional[List[str]] = []  # List of subfolder names to exclude from this folder's zip
-
-class ZipAndUploadRequest(BaseModel):
-    folders: List[FolderZipItem]
-    callback: Optional[CallbackRequest] = None
-
-class FolderZipResult(BaseModel):
-    s3_path: str
-    s3_zip_path: str
-    status: str  # "success" or "failed"
-    zip_size: Optional[int] = None
-    files_count: Optional[int] = None  # Total count of files and folders in the zip
-    excluded_subfolders: Optional[List[str]] = []  # List of subfolders that were excluded
-    error_message: Optional[str] = None
-
-class ZipAndUploadResponse(BaseModel):
-    total_folders: int
-    successful_zips: int
-    failed_zips: int
-    results: List[FolderZipResult]
-
-class ZipTaskResponse(BaseModel):
-    task_id: str
-    status: TaskStatus
-    total_folders: int
-    successful_zips: int = 0
-    failed_zips: int = 0
-    results: List[FolderZipResult] = []
-
-class ZipTaskStatusResponse(BaseModel):
-    task_id: str
-    status: TaskStatus
-    total_folders: int
-    completed_folders: int
-    failed_folders: int
-    results: List[FolderZipResult]
-    error_message: Optional[str] = None
-    created_at: datetime
-    updated_at: datetime
-
-# Schemas for zip and upload functionality
-class FolderZipItem(BaseModel):
-    s3_path: str  # Source folder path in S3
-    s3_zip_path: str  # Destination zip file path in S3
-    excluded_folders: Optional[List[str]] = []  # List of subfolder names to exclude from this folder's zip
-
-class ZipAndUploadRequest(BaseModel):
-    folders: List[FolderZipItem]
-    callback: Optional[CallbackRequest] = None
-
-class FolderZipResult(BaseModel):
-    s3_path: str
-    s3_zip_path: str
-    status: str  # "success" or "failed"
-    zip_size: Optional[int] = None
-    files_count: Optional[int] = None  # Total count of files and folders in the zip
-    excluded_subfolders: Optional[List[str]] = []  # List of subfolders that were excluded
-    error_message: Optional[str] = None
-
-class ZipAndUploadResponse(BaseModel):
-    total_folders: int
-    successful_zips: int
-    failed_zips: int
-    results: List[FolderZipResult]
-
-class ZipTaskResponse(BaseModel):
-    task_id: str
-    status: TaskStatus
-    total_folders: int
-    successful_zips: int = 0
-    failed_zips: int = 0
-    results: List[FolderZipResult] = []
-
-class ZipTaskStatusResponse(BaseModel):
-    task_id: str
-    status: TaskStatus
-    total_folders: int
-    completed_folders: int
-    failed_folders: int
-    results: List[FolderZipResult]
-    error_message: Optional[str] = None
-    created_at: datetime
-    updated_at: datetime
 
 # Schemas for zip and upload functionality
 class FolderZipItem(BaseModel):
@@ -300,6 +212,45 @@ class MoveTaskStatusResponse(BaseModel):
     completed_files: int
     failed_files: int
     results: List[FileMoveResult]
+    error_message: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+# NEW: Schemas for delete functionality from blob storage
+class BlobFileDeleteItem(BaseModel):
+    s3_path: str  # File/folder path in S3 to delete
+    is_folder: bool = False  # Specify if it's a folder
+
+class DeleteFilesRequest(BaseModel):
+    files: List[BlobFileDeleteItem]
+    callback: Optional[CallbackRequest] = None
+
+class BlobFileDeleteResult(BaseModel):
+    s3_path: str
+    status: str  # "success" or "failed"
+    error_message: Optional[str] = None
+
+class DeleteFilesResponse(BaseModel):
+    total_files: int
+    successful_deletions: int
+    failed_deletions: int
+    results: List[BlobFileDeleteResult]
+
+class DeleteTaskResponse(BaseModel):
+    task_id: str
+    status: TaskStatus
+    total_files: int
+    successful_deletions: int = 0
+    failed_deletions: int = 0
+    results: List[BlobFileDeleteResult] = []
+
+class DeleteTaskStatusResponse(BaseModel):
+    task_id: str
+    status: TaskStatus
+    total_files: int
+    completed_files: int
+    failed_files: int
+    results: List[BlobFileDeleteResult]
     error_message: Optional[str] = None
     created_at: datetime
     updated_at: datetime

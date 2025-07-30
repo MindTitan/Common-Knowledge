@@ -115,6 +115,30 @@ class BlobStorageProvider(ABC):
             bool: True if move was successful, False otherwise
         """
         pass
+    
+    @abstractmethod
+    def delete_file(self, path: str) -> bool:
+        """Delete a file from blob storage.
+        
+        Args:
+            path: File path in blob storage to delete
+            
+        Returns:
+            bool: True if deletion was successful, False otherwise
+        """
+        pass
+
+    @abstractmethod
+    def delete_folder(self, prefix: str) -> bool:
+        """Delete a folder and all its contents from blob storage.
+        
+        Args:
+            prefix: Folder prefix in blob storage (should end with /)
+            
+        Returns:
+            bool: True if deletion was successful, False otherwise
+        """
+        pass
 
     @abstractmethod
     def clean_path(self, path: str) -> str:
