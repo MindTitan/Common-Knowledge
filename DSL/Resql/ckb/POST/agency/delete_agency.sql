@@ -5,7 +5,7 @@ SELECT copy_row_with_modifications(
         'is_deleted', '::BOOLEAN', 'TRUE',
         'updated_at', '::TIMESTAMP WITH TIME ZONE', NOW()::VARCHAR
     ]::VARCHAR[]
-) as id
+) as id, zipped_data_url
 FROM agency
 WHERE base_id = :base_id::UUID
   AND is_deleted = FALSE

@@ -2,7 +2,7 @@
   "files": [
     {{#each files}}
     {
-      "path": "{{../agencyId}}/{{../sourceId}}/{{getUuid @root}}/{{this.name}}",
+      "path": "{{../agencyId}}/{{../sourceId}}/{{this.id}}/{{this.name}}",
       "content_type": "{{this.contentType}}"
     }{{#unless @last}},{{/unless}}
     {{/each}}
@@ -10,8 +10,8 @@
   "file_metadata": [
     {{#each files}}
     {
-      "path": "{{../agencyId}}/{{../sourceId}}/{{getUuid @root}}/{{this.name}}",
-      "source_file_id": "{{getUuid @root}}",
+      "path": "{{../agencyId}}/{{../sourceId}}/{{this.id}}/{{this.name}}",
+      "source_file_id": "{{this.id}}",
       "file_name": "{{this.name}}",
       "content_type": "{{this.contentType}}"
     }{{#unless @last}},{{/unless}}

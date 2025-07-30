@@ -29,6 +29,16 @@ extractRequestData:
     files: "${incoming.body.files}"
     expires_in: "${incoming.body.expiresIn || 3600}"
 
+generateSourceFileIds:
+  call: http.post
+  args:
+    url: "[#CKB_DMAPPER_HBS]/generate_source_file_ids"
+    headers:
+      type: json
+    body:
+      files: ${files}
+  result: sourceFileIdsResult
+
 generateFilePaths:
   call: http.post
   args:
@@ -38,7 +48,7 @@ generateFilePaths:
     body:
       agencyId: ${agency_base_id}
       sourceId: ${source_base_id}
-      files: ${files}
+      files: ${sourceFileIdsResult.response.body}
   result: enrichedPaths
 
 requestUploadUrls:

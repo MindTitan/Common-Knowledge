@@ -506,6 +506,7 @@
     "urlAddedSuccess": "URL lisati edukalt",
     "urlAddError": "URL-i lisamine ebaõnnestus",
     "urlDeleteSuccess": "URL kustutati edukalt",
+    "fileDeleteSuccess": "Faili kustutamine õnnestus",
     "urlRefreshed": "URL värskendati edukalt",
     "refreshError": "URL-i värskendamine ebaõnnestus",
     "updateSuccess": "Kirje uuendati edukalt",

@@ -16,7 +16,7 @@ extractRequestData:
   assign:
     base_id: "${incoming.body.baseId}"
 
-deleteAgency:
+deleteAgencyFromDatabase:
   call: http.post
   args:
     url: "[#CKB_RESQL]/agency/delete_agency"
@@ -24,8 +24,36 @@ deleteAgency:
       type: json
     body:
       base_id: ${base_id}
-  result: res
+  result: deleteDbResult
+
+prepareDeleteFiles:
+  call: http.post
+  args:
+    url: "[#CKB_DMAPPER_HBS]/prepare_delete_files"
+    headers:
+      type: json
+    body:
+      base_id: ${base_id}
+      agency_data: ${deleteDbResult.response.body[0]}
+  result: deleteFilesResult
+
+deleteAgencyFilesFromS3:
+  call: http.post
+  args:
+    url: "[#CKB_FILE_MANAGER]/delete-files-async"
+    headers:
+      type: json
+    body:
+      files: ${deleteFilesResult.response.body}
+  result: deleteS3Result
+
+assignResponse:
+  assign:
+    response:
+      s3_delete_task_id: ${deleteS3Result.response.body.task_id}
+      s3_delete_status: ${deleteS3Result.response.body.status}
+      message: "Agency deleted from database and S3 deletion task started"
 
 returnSuccess:
-  return: ${res.response.body}
+  return: ${response}
   next: end

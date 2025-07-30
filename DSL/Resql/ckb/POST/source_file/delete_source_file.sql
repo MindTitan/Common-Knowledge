@@ -5,7 +5,7 @@ SELECT copy_row_with_modifications(
         'is_deleted', '::BOOLEAN', 'TRUE',
         'updated_at', '::TIMESTAMP WITH TIME ZONE', NOW()::VARCHAR
     ]::VARCHAR[]
-) as id
+) as id, source_base_id, agency_base_id
 FROM source_file
 WHERE base_id = :base_id::UUID
   AND updated_at = (

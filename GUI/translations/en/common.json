@@ -508,6 +508,7 @@
     "urlAddedSuccess": "URL added successfully",
     "urlAddError": "Failed to add URL",
     "urlDeleteSuccess": "URL deleted successfully",
+    "fileDeleteSuccess": "File deleted successfully",
     "urlRefreshed": "URL refreshed successfully",
     "refreshError": "Failed to refresh URL",
     "updateSuccess": "Entry updated successfully",
