@@ -22,6 +22,7 @@ def trigger_sitemap_collect_scrapper_task(task: SitemapCollectScrapperTask):
 def trigger_entire_source_scrapper_task(task: EntireSourceScrapperTask):
     entire_source_scrapped_task.delay(task.model_dump(mode='json'))
 
+
 @app.post('/eesti-scrapper-task')
 def trigger_eesti_scrapper_task(task: EestiScrapperTask):
     eesti_scrapper_task.delay(task.model_dump(mode='json'))

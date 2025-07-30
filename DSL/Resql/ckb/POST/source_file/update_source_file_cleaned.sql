@@ -7,7 +7,7 @@ SELECT copy_row_with_modifications(
         'status', '::SOURCE_FILE_STATUS_TYPE', 'finished',
         'updated_at', '::TIMESTAMP WITH TIME ZONE', NOW()::VARCHAR
     ]::VARCHAR[]
-) as id
+) as id, page_title, file_name, url, subsector, source_base_id, base_id
 FROM source_file
 WHERE base_id = :base_id::UUID
   AND updated_at = (
