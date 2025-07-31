@@ -16,7 +16,6 @@ from app.schemas import (
     TaskStatus,
     DeleteFromVolumeRequest,
     DeleteFromVolumeResponse,
-    FileDeleteItem,
     FileDeleteResult
 )
 from app.services.blob_storage import storage_provider, BlobStorageException

@@ -518,7 +518,7 @@ const Agency: FC = () => {
               appearance="text"
               size="s"
               onClick={() => handleRefreshSource(row.original.baseId)}
-              disabled={refreshMutation.isLoading}
+              disabled={refreshMutation.isLoading || row.original.type === 'file'}
             >
               <Icon icon={<MdRefresh fontSize={20} />} size="medium" />
               {t('knowledgeBase.refresh')}
@@ -530,7 +530,7 @@ const Agency: FC = () => {
             to={`/source/${row.original.baseId}/schedule`}
           >
             <Button
-              disabled={row.original.status === 'running'}
+              disabled={row.original.status === 'running' || row.original.type === 'file'}
               appearance="text"
               className="agencies__action-btn"
             >

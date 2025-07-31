@@ -31,6 +31,38 @@ extractRequestData:
     files: "${incoming.body.files}"
     expires_in: "${incoming.body.expiresIn || 3600}"
 
+sourceExists:
+  call: http.get
+  args:
+    url: "[#CKB_RESQL]/source/get_source_exists"
+    contentType: json
+    query:
+      agency_base_id: ${agency_base_id}
+      url: ${url}
+      subsector: ${subsector}
+      type: ${type}
+  result: exists
+
+checkExists:
+  switch:
+    - condition: ${exists.response.body[0].exists}
+      next: getSource
+  next: createSource
+
+getSource:
+  call: http.get
+  args:
+    url: "[#CKB_RESQL]/source/get_source_by_content"
+    contentType: json
+    query:
+      agency_base_id: ${agency_base_id}
+      url: ${url}
+      subsector: ${subsector}
+      type: ${type}
+  result: sourceResponse
+  next: extractSourceId
+
+
 createSource:
   call: http.post
   args:

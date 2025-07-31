@@ -22,15 +22,18 @@ class SpecifiedPagesSpider(BaseSpider):
             self.url_iter = iter([url.url.unicode_string() for url in self.task.urls[1:]])
             self.urls = self.task.urls
 
-
-    async def parse(self, response: Response, **kwargs):
+    def get_base_id_and_hash(self, url: str):
         base_id = None
         hashed = None
         self.logger.info(f'number of urls: {len(self.urls)}')
         for source_file in self.urls:
-            if source_file.url.unicode_string() == response.request.url:
+            if source_file.url.unicode_string() == url:
                 base_id = source_file.id
                 hashed = source_file.hash
+        return base_id, hashed
+
+    async def parse(self, response: Response, **kwargs):
+        base_id, hashed = self.get_base_id_and_hash(response.request.url)
 
         async for obj in super().parse(response, **kwargs):
             if response.status is None or response.status >= 300 or response.status < 200:

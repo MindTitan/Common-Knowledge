@@ -17,4 +17,4 @@ FROM (
         (SELECT value) ->> 'original_data_url' AS original_data_url
     FROM JSON_ARRAY_ELEMENTS(ARRAY_TO_JSON(ARRAY[:files])) WITH ORDINALITY
 ) AS file_data
-RETURNING id, base_id, source_base_id, file_name, subsector, created_at;
+RETURNING NULL as url,  base_id as id, '' as hash, original_data_url, original_data_url as path;
