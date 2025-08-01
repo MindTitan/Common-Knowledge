@@ -68,8 +68,6 @@ getSourceFilesByIds:
 
 getSourceFilesByType:
   switch:
-    - condition: ${file_type === 'scraped_file'}
-      next: getScrapedSourceFiles
     - condition: ${file_type === 'uploaded_file'}
       next: getUploadedSourceFiles
   next: getScrapedSourceFiles
@@ -83,6 +81,7 @@ getScrapedSourceFiles:
       page: ${page}
       page_size: ${page_size}
       sorting: ${sorting}
+      type: ${file_type}
   result: res
   next: returnSuccess
 

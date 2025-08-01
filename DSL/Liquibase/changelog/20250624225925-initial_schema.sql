@@ -10,21 +10,23 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS hstore;
 
 -- Create custom ENUM types
-CREATE TYPE source_type AS ENUM ('url_to_scrape', 'file');
+CREATE TYPE agency_type AS ENUM ('client', 'api');
+CREATE TYPE source_type AS ENUM ('url_to_scrape', 'file', 'api');
 CREATE TYPE source_status_type AS ENUM ('running', 'finished', 'failed');
 CREATE TYPE source_file_status_type AS ENUM ('scraping', 'cleaning', 'finished', 'not_found', 'failed');
-CREATE TYPE source_file_type AS ENUM ('scraped_file', 'uploaded_file');
+CREATE TYPE source_file_type AS ENUM ('scraped_file', 'uploaded_file', 'api_file');
 
 CREATE TABLE agency (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     base_id UUID NOT NULL DEFAULT uuid_generate_v4(),
     name TEXT NOT NULL,
     sector TEXT,
-    centops_id TEXT,
+    external_id TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     is_deleted BOOLEAN DEFAULT FALSE,
     zipped_data_url TEXT,
+    type agency_type NOT NULL DEFAULT 'client',
     data_hash TEXT
 );
 
@@ -101,6 +103,7 @@ CREATE TABLE source_file (
     status source_file_status_type NOT NULL DEFAULT 'cleaning',
     type source_file_type NOT NULL,
     file_name TEXT,
+    external_id TEXT,
     subsector TEXT,
     is_excluded BOOLEAN DEFAULT FALSE,
     is_deleted BOOLEAN DEFAULT FALSE

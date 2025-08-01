@@ -16,7 +16,7 @@ class EestiSpider(BaseSpider):
     
     custom_settings = {
         'ROBOTSTXT_OBEY': False,
-        'DOWNLOAD_DELAY': 0.5,  # Be respectful to eesti.ee
+        'DOWNLOAD_DELAY': 0,  # Be respectful to eesti.ee
     }
 
     def __init__(self, *args, **kwargs):
@@ -171,7 +171,8 @@ class EestiSpider(BaseSpider):
             file_type='.html',
             metadata=Metadata(),
             source_url=article_url,
-            page_title=title
+            page_title=title,
+            external_id=id
         )
         
         # Create scrapped item

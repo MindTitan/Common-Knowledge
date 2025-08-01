@@ -145,7 +145,10 @@ class CreateSourceFile:
             'url': item.metadata.source_url,
             'page_title': item.metadata.page_title,
             'original_data_hash': item.hash,
-            'scraped_at': item.metadata.created_at
+            'scraped_at': item.metadata.created_at,
+            'external_id': item.metadata.external_id,
+            'type': 'api_file' if spider.task.__class__.__name__ == 'EestiScrapperTask' else 'scraped_file'
+
         })
         item.source_file_id = res.json()['response']
         return item
@@ -164,7 +167,8 @@ class UpdateSourceFile:
             'original_data_url': item.file_path_uploaded,
             'original_metadata_url': item.metadata_path_uploaded,
             'original_data_hash': item.hash,
-            'scraped_at': item.metadata.created_at
+            'scraped_at': item.metadata.created_at,
+            'external_id': item.metadata.external_id
         })
         return item
 
@@ -174,7 +178,7 @@ class ScrappingFinishedPipeline:
     def close_spider(self, spider: Spider):
         if not hasattr(spider, 'task'):
             return
-
+    
         spider: BaseSpider
         task: BaseObject = spider.task
 

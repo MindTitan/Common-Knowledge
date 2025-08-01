@@ -26,6 +26,12 @@ declaration:
       - field: scraped_at
         type: string
         description: "When the source was scraped"
+      - field: type
+        type: string
+        description: "Type of source file (API or Scraped)"
+      - field: external_id
+        type: string
+        description: "Optional external id"
 
 addScrappedFile:
   call: http.post
@@ -38,6 +44,8 @@ addScrappedFile:
       page_title: ${incoming.body.page_title}
       original_data_hash: ${incoming.body.original_data_hash}
       scraped_at: ${incoming.body.scraped_at}
+      external_id: ${incoming.body.external_id}
+      type: ${incoming.body.type}
   result: res
 
 returnResult:

@@ -1,6 +1,6 @@
 WITH latest_agencies AS (
     SELECT DISTINCT ON (base_id) 
-        id, base_id, name, sector, is_deleted, updated_at
+        id, base_id, name, sector, type, is_deleted, updated_at
     FROM agency 
     ORDER BY base_id, updated_at DESC
 )
@@ -10,7 +10,7 @@ SELECT
     CEIL(COUNT(*) OVER () / :page_size::DECIMAL) AS total_pages,
     (COUNT(*) OVER ()) AS total
 FROM latest_agencies
-WHERE is_deleted = FALSE
+WHERE is_deleted = FALSE AND type <> 'api'
 ORDER BY 
     CASE WHEN :sorting = 'name asc' THEN name END ASC,
     CASE WHEN :sorting = 'name desc' THEN name END DESC,

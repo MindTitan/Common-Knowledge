@@ -25,26 +25,6 @@ validateInput:
     - condition: ${agency_base_id === null || agency_base_id === ""}
       next: returnError
 
-getExcludedSourceFiles:
-  call: http.get
-  args:
-    url: "[#CKB_RESQL]/source_file/list_excluded_source_files_by_agency"
-    query:
-      agency_base_id: ${agency_base_id}
-  result: res
-
-formatExcludedFolders:
-  call: http.post
-  args:
-    url: "[#CKB_DMAPPER_HBS]/format_excluded_folders_for_zip"
-    headers:
-      type: json
-    body:
-      agencyId: ${agency_base_id}
-      zipPath: ${zip_path}
-      excludedFiles: ${res.response.body}
-  result: formattedRes
-
 zipAndUploadFolders:
   call: http.post
   args:
@@ -52,7 +32,9 @@ zipAndUploadFolders:
     headers:
       type: json
     body:
-      folders: ${formattedRes.response.body.folders}
+      folders:
+        - s3_path: "${agency_base_id}/"
+          s3_zip_path: ${zip_path}
   result: zipResult
 
 returnSuccess:

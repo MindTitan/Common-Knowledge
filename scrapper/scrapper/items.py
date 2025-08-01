@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from datetime import datetime
-
+from typing import Optional
 
 @dataclass
 class Metadata:
@@ -21,6 +21,7 @@ class MetadataItem:
     source_url: str
     metadata: Metadata
     page_title: str
+    external_id: Optional[str] = ""
     version: str = "1.0"
     created_at: str = field(default_factory=lambda: str(datetime.now()))
 

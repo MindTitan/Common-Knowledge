@@ -1,5 +1,6 @@
 import { FC, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { MdOutlineEdit, MdRefresh, MdOutlineStopCircle } from 'react-icons/md';
 import { Button, Card, DataTable, Icon, Track } from 'components';
 import {
@@ -10,51 +11,21 @@ import {
 } from '@tanstack/react-table';
 import { useToast } from 'hooks/useToast';
 import { Link } from 'react-router-dom';
+import {
+  getApiIntegrations,
+  stopSourceScraping,
+  refreshSource,
+  ApiIntegration,
+  ApiIntegrationsListParams,
+} from 'services/sources';
 import 'pages/Agency/AgencyList.scss';
-
-// Mock data types
-interface ApiIntegration {
-  id: string;
-  baseId: string;
-  name: string;
-  lastScraped: string;
-  status: 'running' | 'done';
-}
-
-// Mock data
-const mockApiData: ApiIntegration[] = [
-  {
-    id: '1',
-    baseId: 'arva-123',
-    name: 'ARVA',
-    lastScraped: '2024-05-06T10:08:00Z',
-    status: 'running',
-  },
-  {
-    id: '2',
-    baseId: 'riigiteataja-456',
-    name: 'Riigiteataja',
-    lastScraped: '2024-05-06T10:08:00Z',
-    status: 'done',
-  },
-  // Add more mock data to reach 170 results
-  ...Array.from({ length: 168 }, (_, i) => ({
-    id: `${i + 3}`,
-    baseId: `api-${i + 3}`,
-    name: `API Integration ${i + 3}`,
-    lastScraped: '2024-05-06T10:08:00Z',
-    status: (i % 2 === 0 ? 'running' : 'done') as 'running' | 'done',
-  })),
-];
 
 const ApiList: FC = () => {
   const { t } = useTranslation();
   const toast = useToast();
+  const queryClient = useQueryClient();
 
-  const [isRefreshing, setIsRefreshing] = useState<string | null>(null);
-  const [isStopping, setIsStopping] = useState<string | null>(null);
-
-  // Table state for client-side pagination and sorting
+  // Add table state for server-side pagination and sorting
   const [pagination, setPagination] = useState<PaginationState>({
     pageIndex: 0,
     pageSize: 10,
@@ -62,74 +33,104 @@ const ApiList: FC = () => {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
 
-  // Mock API calls
-  const handleStopScraping = async (apiId: string) => {
-    setIsStopping(apiId);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+  // Convert sorting state to API format
+  const getSortingParam = (sorting: SortingState): string => {
+    if (sorting.length === 0) return 'last_scraped_at desc';
 
-    toast.open({
-      type: 'success',
-      title: t('global.notification'),
-      message: t('knowledgeBase.stopSuccess'),
-    });
+    const sort = sorting[0];
+    let field = sort.id;
 
-    setIsStopping(null);
-  };
-
-  const handleRefreshApi = async (apiId: string) => {
-    setIsRefreshing(apiId);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    toast.open({
-      type: 'success',
-      title: t('global.notification'),
-      message: t('knowledgeBase.refreshSuccess'),
-    });
-
-    setIsRefreshing(null);
-  };
-
-  // Process data for table (sorting, filtering, pagination)
-  const processedData = useMemo(() => {
-    let filteredData = [...mockApiData];
-
-    // Apply column filters
-    columnFilters.forEach((filter) => {
-      if (filter.value) {
-        filteredData = filteredData.filter((item) =>
-          String(item[filter.id as keyof ApiIntegration])
-            .toLowerCase()
-            .includes(String(filter.value).toLowerCase())
-        );
-      }
-    });
-
-    // Apply sorting
-    if (sorting.length > 0) {
-      const sort = sorting[0];
-      filteredData.sort((a, b) => {
-        const aValue = a[sort.id as keyof ApiIntegration];
-        const bValue = b[sort.id as keyof ApiIntegration];
-
-        if (aValue < bValue) return sort.desc ? 1 : -1;
-        if (aValue > bValue) return sort.desc ? -1 : 1;
-        return 0;
-      });
-    }
-
-    // Calculate pagination
-    const startIndex = pagination.pageIndex * pagination.pageSize;
-    const endIndex = startIndex + pagination.pageSize;
-    const paginatedData = filteredData.slice(startIndex, endIndex);
-
-    return {
-      data: paginatedData,
-      total: filteredData.length,
-      totalPages: Math.ceil(filteredData.length / pagination.pageSize),
+    // Map column IDs to API field names
+    const fieldMap: Record<string, string> = {
+      name: 'name',
+      url: 'url',
+      lastScraped: 'last_scraped_at',
+      status: 'status',
     };
-  }, [mockApiData, pagination, sorting, columnFilters]);
+
+    field = fieldMap[field] || field;
+    return `${field} ${sort.desc ? 'desc' : 'asc'}`;
+  };
+
+  // API query parameters
+  const queryParams: ApiIntegrationsListParams = useMemo(
+    () => ({
+      page: pagination.pageIndex + 1,
+      pageSize: pagination.pageSize,
+      sorting: getSortingParam(sorting),
+    }),
+    [pagination.pageIndex, pagination.pageSize, sorting]
+  );
+
+  // Fetch API integrations data
+  const {
+    data: apiData,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: ['apiIntegrations', queryParams],
+    queryFn: () => getApiIntegrations(queryParams),
+    keepPreviousData: true,
+  });
+
+  // Stop scraping mutation
+  const stopScrapingMutation = useMutation({
+    mutationFn: stopSourceScraping,
+    onSuccess: () => {
+      toast.open({
+        type: 'success',
+        title: t('global.notification'),
+        message: t('knowledgeBase.stopSuccess'),
+      });
+      queryClient.invalidateQueries(['apiIntegrations']);
+    },
+    onError: (error: any) => {
+      toast.open({
+        type: 'error',
+        title: t('global.notificationError'),
+        message: error.message || t('knowledgeBase.stopError'),
+      });
+    },
+  });
+
+  // Refresh source mutation
+  const refreshMutation = useMutation({
+    mutationFn: refreshSource,
+    onSuccess: () => {
+      toast.open({
+        type: 'success',
+        title: t('global.notification'),
+        message: t('knowledgeBase.refreshSuccess'),
+      });
+      queryClient.invalidateQueries(['apiIntegrations']);
+    },
+    onError: (error: any) => {
+      toast.open({
+        type: 'error',
+        title: t('global.notificationError'),
+        message: error.message || t('knowledgeBase.refreshError'),
+      });
+    },
+  });
+
+  const handleStopScraping = (sourceId: string) => {
+    stopScrapingMutation.mutate(sourceId);
+  };
+
+  const handleRefreshSource = (sourceId: string) => {
+    refreshMutation.mutate(sourceId);
+  };
+
+  // Handle pagination change
+  const handlePaginationChange = (newPagination: PaginationState) => {
+    setPagination(newPagination);
+  };
+
+  // Handle sorting change
+  const handleSortingChange = (newSorting: SortingState) => {
+    setSorting(newSorting);
+  };
 
   const columns: ColumnDef<ApiIntegration>[] = [
     {
@@ -141,54 +142,42 @@ const ApiList: FC = () => {
           to={`/api/${row.original.baseId}`}
           style={{ textDecoration: 'underline', color: '#005AA3' }}
         >
-          <div className="agencies__agency-cell">{row.original.name}</div>
+          <div className="agencies__agency-cell">
+            {row.original.name || row.original.url}
+          </div>
         </Link>
       ),
     },
     {
-      accessorKey: 'lastScraped',
+      accessorKey: 'lastScrapedAt',
       header: t('knowledgeBase.lastScraped'),
       enableColumnFilter: false,
       cell: ({ row }) => (
         <span>
-          {new Date(row.original.lastScraped).toLocaleDateString('et-EE', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-          })}{' '}
-          {new Date(row.original.lastScraped).toLocaleTimeString('et-EE', {
-            hour: '2-digit',
-            minute: '2-digit',
-          })}
+          {row.original.lastScrapedAt &&
+            new Date(row.original.lastScrapedAt).toLocaleDateString('et-EE', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+            })}
         </span>
       ),
     },
     {
       accessorKey: 'status',
       header: t('global.status'),
-      cell: ({ row }) => {
-        const statusMap = {
-          running: 'In progress',
-          done: 'Done',
-        };
-
-        const statusColorMap = {
-          running: '#005AA3',
-          done: '#266B42',
-        };
-
-        return (
-          <span
-            className="agencies__status-cell"
-            style={{
-              color: statusColorMap[row.original.status],
-              borderColor: statusColorMap[row.original.status],
-            }}
-          >
-            {statusMap[row.original.status]}
-          </span>
-        );
-      },
+      cell: ({ row }) => (
+        <span
+          className={`agencies__status-cell`}
+          style={{
+            color: row.original.status === 'running' ? '#005AA3' : '#266B42',
+            borderColor:
+              row.original.status === 'running' ? '#005AA3' : '#266B42',
+          }}
+        >
+          {t(`knowledgeBase.${row.original.status}`)}
+        </span>
+      ),
       enableColumnFilter: false,
     },
     {
@@ -201,8 +190,8 @@ const ApiList: FC = () => {
               className="agencies__action-btn"
               appearance="text"
               size="s"
-              onClick={() => handleStopScraping(row.original.id)}
-              disabled={isStopping === row.original.id}
+              onClick={() => handleStopScraping(row.original.baseId)}
+              disabled={stopScrapingMutation.isLoading}
             >
               <Icon
                 icon={<MdOutlineStopCircle fontSize={20} />}
@@ -215,8 +204,8 @@ const ApiList: FC = () => {
               className="agencies__action-btn"
               appearance="text"
               size="s"
-              onClick={() => handleRefreshApi(row.original.id)}
-              disabled={isRefreshing === row.original.id}
+              onClick={() => handleRefreshSource(row.original.baseId)}
+              disabled={refreshMutation.isLoading}
             >
               <Icon icon={<MdRefresh fontSize={20} />} size="medium" />
               {t('knowledgeBase.refresh')}
@@ -250,6 +239,16 @@ const ApiList: FC = () => {
     },
   ];
 
+  // Show loading state
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  // Show error state
+  if (error) {
+    return <div>Error loading API integrations: {error.message}</div>;
+  }
+
   return (
     <div className="agencies">
       <Track
@@ -262,23 +261,23 @@ const ApiList: FC = () => {
 
       <Card>
         <DataTable
-          data={processedData.data}
+          data={apiData?.data ?? []}
           columns={columns}
           pagination={pagination}
-          setPagination={setPagination}
+          setPagination={handlePaginationChange}
           sorting={sorting}
-          setSorting={setSorting}
+          setSorting={handleSortingChange}
           columnFilters={columnFilters}
           setFiltering={setColumnFilters}
           sortable
           filterable
-          pagesCount={processedData.totalPages}
-          isClientSide={true}
+          pagesCount={apiData?.totalPages ?? 0}
+          isClientSide={false}
         />
 
         <div className="agencies__footer">
           <span className="agencies__total">
-            {processedData.total} {t('knowledgeBase.results')}
+            {apiData?.total ?? 0} {t('knowledgeBase.results')}
           </span>
         </div>
       </Card>

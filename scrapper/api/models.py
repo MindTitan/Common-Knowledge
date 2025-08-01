@@ -25,5 +25,5 @@ class EntireSourceScrapperTask(BaseObject):
 
 
 class EestiScrapperTask(BaseObject):
-    """Task for scraping all articles from Eesti.ee"""
+    """Task for scraping all articles from ARVA/Eesti.ee"""
     pass

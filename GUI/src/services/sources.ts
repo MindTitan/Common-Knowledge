@@ -22,6 +22,21 @@ export interface Source {
   updateAutomatically?: boolean;
 }
 
+// API Integration interface - extends Source but with specific properties
+export interface ApiIntegration {
+  id: string;
+  baseId: string;
+  name?: string;
+  url: string;
+  lastScrapedAt: string;
+  status: string;
+  agencyBaseId: string;
+  createdAt: string;
+  updatedAt: string;
+  cronSchedule?: string;
+  updateAutomatically?: boolean;
+}
+
 export interface ApiResponse {
   response: any;
 }
@@ -34,8 +49,22 @@ export interface SourcesListResponse {
   totalPages: number;
 }
 
+export interface ApiIntegrationsListResponse {
+  data: ApiIntegration[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
 export interface SourcesListParams {
   agencyBaseId: string;
+  page?: number;
+  pageSize?: number;
+  sorting?: string;
+}
+
+export interface ApiIntegrationsListParams {
   page?: number;
   pageSize?: number;
   sorting?: string;
@@ -70,6 +99,41 @@ export interface UpdateSourceSubsectorRequest {
   subsector: string;
 }
 
+// API Source File interface - for API integration files
+export interface ApiSourceFile {
+  id: string;
+  baseId: string;
+  name: string;
+  pageTitle: string;
+  url?: string;
+  externalId?: string;
+  isExcluded: boolean;
+  status: string;
+  lastScrapedAt: string;
+  originalDataUrl?: string;
+  cleanedDataUrl?: string;
+  editedDataUrl?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ApiSourceFilesListResponse {
+  data: ApiSourceFile[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface ApiSourceFilesListParams {
+  sourceId?: string;
+  page?: number;
+  pageSize?: number;
+  sorting?: string;
+  search?: string;
+  type: 'api_file';
+}
+
 // Re-export types that might be needed by consumers
 export type { FileProgressCallback } from './s3';
 
@@ -96,6 +160,35 @@ export const getSources = async (
 
   return {
     data: sources,
+    total: firstItem?.total,
+    page: parseInt(firstItem?.page || '1'),
+    pageSize: params.pageSize || 10,
+    totalPages: firstItem?.totalPages || 1,
+  };
+};
+
+/**
+ * Get all API integrations
+ */
+export const getApiIntegrations = async (
+  params: ApiIntegrationsListParams
+): Promise<ApiIntegrationsListResponse> => {
+  const response = await apiDev.get(`/source/api/all`, {
+    params: {
+      page: params.page || 1,
+      pageSize: params.pageSize || 10,
+      sorting: params.sorting || 'last_scraped_at desc',
+    },
+  });
+
+  const apiResponse: ApiResponse = response.data;
+
+  // Transform the API response to match our expected structure
+  const apiIntegrations = apiResponse.response || [];
+  const firstItem = apiIntegrations[0];
+
+  return {
+    data: apiIntegrations,
     total: firstItem?.total,
     page: parseInt(firstItem?.page || '1'),
     pageSize: params.pageSize || 10,
@@ -325,6 +418,38 @@ export const getSource = async (baseId: string): Promise<Source> => {
 
   // Return the first source from the response array or the response itself
   return apiResponse.response?.[0] || apiResponse.response;
+};
+
+/**
+ * Get all API source files
+ */
+export const getApiSourceFiles = async (
+  params: ApiSourceFilesListParams
+): Promise<ApiSourceFilesListResponse> => {
+  const response = await apiDev.get(`/source-file/all`, {
+    params: {
+      sourceId: params.sourceId,
+      page: params.page || 1,
+      pageSize: params.pageSize || 10,
+      sorting: params.sorting || 'last_scraped_at desc',
+      search: params.search,
+      type: params.type,
+    },
+  });
+
+  const apiResponse: ApiResponse = response.data;
+
+  // Transform the API response to match our expected structure
+  const apiSourceFiles = apiResponse.response || [];
+  const firstItem = apiSourceFiles[0];
+
+  return {
+    data: apiSourceFiles,
+    total: firstItem?.total,
+    page: parseInt(firstItem?.page || '1'),
+    pageSize: params.pageSize || 10,
+    totalPages: firstItem?.totalPages || 1,
+  };
 };
 
 /**
