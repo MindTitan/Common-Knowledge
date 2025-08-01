@@ -136,6 +136,7 @@ class EestiSpider(BaseSpider):
         """Create a ScrappedItem from API article data"""
         # Extract content and create HTML-like structure
         title = article_data.get('title', entry.get('title', ''))
+        article_id = article_data.get('id', '')
         description = article_data.get('description', '')
         content = article_data.get('content', '')
         
@@ -172,7 +173,7 @@ class EestiSpider(BaseSpider):
             metadata=Metadata(),
             source_url=article_url,
             page_title=title,
-            external_id=id
+            external_id=article_id
         )
         
         # Create scrapped item
