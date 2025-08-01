@@ -81,7 +81,7 @@ export const createSourceWithFiles = async (
   }));
 
   const response = await apiDev.post(
-    '/source/file/create-source-and-upload-urls',
+    '/source/file/create-source-if-not-exists-and-upload-urls',
     {
       agencyBaseId: agencyBaseId,
       subsector: subsector,

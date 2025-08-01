@@ -27,3 +27,18 @@ class EntireSourceScrapperTask(BaseObject):
 class EestiScrapperTask(BaseObject):
     """Task for scraping all articles from ARVA/Eesti.ee"""
     pass
+
+
+class DownloadUrlItem(BaseModel):
+    path: str
+    download_url: HttpUrl | None = None
+
+
+class UploadFile(LinkToScrape):
+    url: HttpUrl | None = None
+    path: str
+
+
+class UploadedFileTask(BaseObject):
+    download_files: list[DownloadUrlItem]
+    urls: list[UploadFile]

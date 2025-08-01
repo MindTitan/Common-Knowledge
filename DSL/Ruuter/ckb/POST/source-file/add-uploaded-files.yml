@@ -43,60 +43,38 @@ createUploadedSourceFiles:
       files: ${files}
   result: createResult
 
-prepareDownloadFilesWithCallback:
+transformToGetDownloadUrls:
   call: http.post
   args:
-    url: "[#CKB_DMAPPER_HBS]/prepare_download_files_with_callback"
+    url: "[#CKB_DMAPPER_HBS]/map_paths_for_source_file"
     headers:
       type: json
     body:
-      source_id: ${source_id}
-      files: ${files}
-  result: downloadFilesResult
+      source_files: ${createResult.response.body}
+  result: pathsResult
 
-downloadFilesToVolume:
+requestDownloadUrls:
   call: http.post
   args:
-    url: "[#CKB_FILE_MANAGER]/download-files-to-volume-async"
+    url: "[#CKB_FILE_MANAGER]/download-urls"
     headers:
-      type: json
+      Content-Type: application/json
+      accept: application/json
     body:
-      files: ${downloadFilesResult.response.body.files}
-      callback:
-        url: "[#CKB_RUUTER_INTERNAL]/source-file/files-uploaded-callback"
-        method: "POST"
-        body: ${downloadFilesResult.response.body.callback_body}
-  result: downloadResult
+      paths: ${pathsResult.response.body}
+  result: downloadResponse
 
-checkDownloadResult:
-  switch:
-    - condition: ${downloadResult.response.statusCodeValue >= 200 && downloadResult.response.statusCodeValue < 300}
-      next: checkCreateResult
-  next: logDownloadError
-
-logDownloadError:
-  # Log download error but don't fail the entire process since files are created in DB
-  assign:
-    download_error: "Warning: Failed to download some files to volume"
-  next: checkCreateResult
-
-checkCreateResult:
-  switch:
-    - condition: ${createResult.response.statusCodeValue >= 200 && createResult.response.statusCodeValue < 300}
-      next: returnSuccess
-  next: returnCreateError
+triggerPipelineForUploadedFiles:
+  template: "[#CKB_PROJECT_LAYER]/pipeline/trigger-uploaded-files-task"
+  requestType: templates
+  body:
+    source_id: ${source_id}
+    agency_id: ${agency_id}
+    source_files: ${createResult.response.body}
+    download_files: ${downloadResponse.response.body.download_urls}
+  result: res
 
 returnSuccess:
   return: ${createResult.response.body}
   status: 200
-  next: end
-
-returnError:
-  return: "Missing required fields: sourceId and files array"
-  status: 400
-  next: end
-
-returnCreateError:
-  return: "Failed to create uploaded source files"
-  status: 500
   next: end

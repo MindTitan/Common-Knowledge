@@ -21,6 +21,16 @@ def specified_links_scrapper_task(task: SpecifiedLinksScrapeTask):
 
 
 @app.task
+@un_json(SpecifiedLinksScrapeTask)
+def uploaded_file_task(task: SpecifiedLinksScrapeTask):
+    dumped_version = task.model_dump_json()
+    escaped_version = shlex.quote(dumped_version)
+
+    p = subprocess.Popen(['python', 'run_uploaded_file.py', escaped_version])
+    p.wait()
+
+
+@app.task
 @un_json(SitemapCollectScrapperTask)
 def sitemap_collect_scrapper_task(task: SitemapCollectScrapperTask):
     dumped_version = task.model_dump_json()
