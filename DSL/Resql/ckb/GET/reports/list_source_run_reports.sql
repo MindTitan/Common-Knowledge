@@ -1,3 +1,58 @@
+/*
+declaration:
+  version: 0.1
+  description: "list reports"
+  method: get
+  namespace: reports
+  returns: json
+  allowlist:
+    query:
+      - field: sorting
+        type: string
+        description: "sorting"
+        enum: ["name desc", "name asc", "sector desc", "sector asc", "updatedAt asc", "updatedAt desc"]
+      - field: page_size
+        type: number
+        description: "page size"
+      - field: page
+        type: number
+        description: "page number"
+  response:
+    fields:
+      - field: id
+        type: integer
+        description: "Primary key of the report entry"
+      - field: base_id
+        type: string
+        description: "base id of report"
+      - field: agency_base_id
+        type: string
+        description: "agency base id"
+      - field: agency_name
+        type: string
+        description: "name of agency"
+      - field: url
+        type: string
+        description: "source url"
+      - field: errors
+        type: number
+        description: "number of errors"
+      - field: scraping_started_at
+        type: timestamp
+        description: "when scrapping started"
+      - field: scraping_finished_at
+        type: timestamp
+        description: "when scrapping started"
+      - field: page
+        type: number
+        description: "page number"
+      - field: total_pages
+        type: number
+        description: "number of pages"
+      - field: total
+        type: number
+        description: "total number of agencies"
+*/
 WITH latest_reports AS (
     SELECT DISTINCT ON (base_id) 
         id, base_id, agency_base_id, agency_name, url, errors, 

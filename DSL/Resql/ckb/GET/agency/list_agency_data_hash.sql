@@ -1,4 +1,26 @@
-SELECT 
+/*
+declaration:
+  version: 0.1
+  description: "list agency with data hash"
+  method: get
+  namespace: agency
+  returns: json
+  allowlist:
+    query:
+      - field: agencyIds
+        type: string
+        description: "agency base ids, comma separated"
+  response:
+    fields:
+      - field: data_hash
+        type: integer
+        description: "data hash"
+      - field: client_id
+        type: string
+        description: "base id of agency"
+
+*/
+SELECT
     base_id AS client_id,
     data_hash AS client_data_hash
 FROM agency a1
