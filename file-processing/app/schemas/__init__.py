@@ -149,6 +149,8 @@ class FolderZipResult(BaseModel):
     files_count: Optional[int] = None  # Total count of files and folders in the zip
     excluded_subfolders: Optional[List[str]] = []  # List of subfolders that were excluded
     error_message: Optional[str] = None
+    data_hash: str = None
+
 
 class ZipAndUploadResponse(BaseModel):
     total_folders: int

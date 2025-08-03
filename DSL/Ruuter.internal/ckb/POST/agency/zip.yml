@@ -14,11 +14,15 @@ declaration:
       - field: zipPath
         type: string
         description: "S3 path where the zip file should be uploaded"
+      - field: sourceId
+        type: string
+        description: "sourceId to update, that it's finished in a callback"
 
 extractRequestData:
   assign:
     agency_base_id: "${incoming.body.agencyId}"
     zip_path: "${incoming.body.zipPath ?? 'zipped/' + incoming.body.agencyId + '.zip'}"
+    source_id: "${incoming.body.sourceId}"
 
 validateInput:
   switch:
@@ -33,8 +37,15 @@ zipAndUploadFolders:
       type: json
     body:
       folders:
-        - s3_path: "${agency_base_id}/"
+        - s3_path: "uploads/scrapped-data/${agency_base_id}/"
           s3_zip_path: ${zip_path}
+      callback:
+        url: "[#CKB_RUUTER_INTERNAL]/agency/update-data-hash"
+        method: POST
+        body:
+          agency_id: ${agency_base_id}
+          source_id: ${source_id}
+          zip_path: ${zip_path}
   result: zipResult
 
 returnSuccess:

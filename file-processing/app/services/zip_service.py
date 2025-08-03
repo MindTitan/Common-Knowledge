@@ -1,12 +1,11 @@
 import os
 import logging
 import uuid
-import zipfile
 import tempfile
 import shutil
 import requests
+import hashlib
 from typing import List, Dict, Optional
-from pathlib import Path
 from datetime import datetime
 from app.schemas import (
     ZipAndUploadRequest,
@@ -14,7 +13,6 @@ from app.schemas import (
     FolderZipItem,
     FolderZipResult,
     ZipTaskResponse,
-    ZipTaskStatusResponse,
     TaskStatus
 )
 from app.services.blob_storage import storage_provider, BlobStorageException
@@ -78,6 +76,17 @@ def update_zip_task(task_id: str, **updates) -> None:
         _zip_tasks[task_id]["updated_at"] = datetime.now()
 
 
+def compute_file_hash(file_path):
+    hash_func = hashlib.sha1()
+
+    with open(file_path, 'rb') as file:
+        # Read the file in chunks of 8192 bytes
+        while chunk := file.read(8192):
+            hash_func.update(chunk)
+
+    return hash_func.hexdigest()
+
+
 def process_single_folder_zip(folder_item: FolderZipItem) -> FolderZipResult:
     """Process zipping of a single folder, excluding specified subfolders."""
     
@@ -129,44 +138,16 @@ def process_single_folder_zip(folder_item: FolderZipItem) -> FolderZipResult:
             logger.info(f"No files found in {clean_s3_path}, creating zip with empty folder")
         
         # Create zip file in temp directory
-        temp_zip_path = os.path.join(temp_dir, "folder.zip")
+        temp_zip_path = os.path.join(temp_dir, "folder_content.zip")
         
         logger.info(f"Creating zip file {temp_zip_path} with {successful_count} files")
         
-        with zipfile.ZipFile(temp_zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-            # Get the parent folder name from s3_path to use as root in zip
-            s3_path_parts = folder_item.s3_path.rstrip('/').split('/')
-            parent_folder_name = s3_path_parts[-1]  # Last part is the folder name
-            
-            if successful_count == 0:
-                # Create empty folder entry in zip
-                zipinfo = zipfile.ZipInfo(parent_folder_name + '/')
-                zipinfo.external_attr = 0o755 << 16
-                zipf.writestr(zipinfo, '')
-            else:
-                # Walk through all downloaded files and add them to zip
-                for root, dirs, files in os.walk(local_folder_path):
-                    # Add files
-                    for file in files:
-                        file_path = os.path.join(root, file)
-                        relative_path = os.path.relpath(file_path, local_folder_path)
-                        # Prepend parent folder name
-                        arcname = os.path.join(parent_folder_name, relative_path).replace('\\', '/')
-                        zipf.write(file_path, arcname)
-                    
-                    # Add empty directories
-                    for dir_name in dirs:
-                        dir_path = os.path.join(root, dir_name)
-                        if not os.listdir(dir_path):  # Only add if empty
-                            relative_path = os.path.relpath(dir_path, local_folder_path)
-                            # Prepend parent folder name
-                            arcname = os.path.join(parent_folder_name, relative_path).replace('\\', '/') + '/'
-                            zipinfo = zipfile.ZipInfo(arcname)
-                            zipinfo.external_attr = 0o755 << 16
-                            zipf.writestr(zipinfo, '')
-        
+        shutil.make_archive(local_folder_path, 'zip')
+
         # Get zip file size
         zip_size = os.path.getsize(temp_zip_path)
+
+        hashed = compute_file_hash(temp_zip_path)
         
         logger.info(f"Zip file created successfully. Size: {zip_size} bytes")
         
@@ -181,7 +162,8 @@ def process_single_folder_zip(folder_item: FolderZipItem) -> FolderZipResult:
             status="success",
             zip_size=zip_size,
             files_count=max(successful_count, 1),  # At least 1 for the empty folder case
-            excluded_subfolders=excluded_subfolders_found
+            excluded_subfolders=excluded_subfolders_found,
+            data_hash=hashed,
         )
         
     except BlobStorageException as e:
@@ -231,7 +213,7 @@ def process_zip_task(task_id: str) -> None:
         for folder_item in task_data["folders"]:
             try:
                 result = process_single_folder_zip(folder_item)
-                results.append(result)
+                results.append(result.model_dump(mode='json'))
                 
                 if result.status == "success":
                     successful_zips += 1
@@ -249,7 +231,7 @@ def process_zip_task(task_id: str) -> None:
                     error_message=error_msg,
                     files_count=0,
                     excluded_subfolders=[]
-                ))
+                ).model_dump(mode='json'))
                 failed_zips += 1
                 logger.error(error_msg)
         
@@ -267,7 +249,7 @@ def process_zip_task(task_id: str) -> None:
         # Execute callback if provided
         callback = task_data.get("callback")
         if callback:
-            execute_callback(task_id, callback, task_data)
+            execute_callback(task_id, callback, task_data, results)
         
     except Exception as e:
         error_msg = f"Zip task failed: {str(e)}"
@@ -284,7 +266,7 @@ def process_zip_task(task_id: str) -> None:
             execute_callback(task_id, callback, task_data)
 
 
-def execute_callback(task_id: str, callback, task_data: dict) -> None:
+def execute_callback(task_id: str, callback, task_data: dict, results: list[dict] | None = None) -> None:
     """Execute the callback HTTP request exactly as configured."""
     try:
         # Prepare headers
@@ -295,6 +277,7 @@ def execute_callback(task_id: str, callback, task_data: dict) -> None:
         # Get method and body from the CallbackRequest object
         method = callback.method.upper()
         body_data = callback.body or {}
+        body_data['results'] = results
         
         # Make the callback request with only the configured data
         if method == "GET":

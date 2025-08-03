@@ -182,11 +182,10 @@ class ScrappingFinishedPipeline:
         spider: BaseSpider
         task: BaseObject = spider.task
 
-        requests.post(f'{spider.settings.get('RUUTER_INTERNAL')}/ckb/source/update-status', json={
-            'source_id': task.source_id,
-            'status': 'finished',
+        requests.post(f'{spider.settings.get('RUUTER_INTERNAL')}/ckb/agency/zip', json={
+            'sourceId': task.source_id,
+            'agencyId': task.agency_id,
         })
-        requests.get(f'{spider.settings.get('RUUTER_INTERNAL')}/ckb/pipeline/scheduler-check-for-unscheduled-records')
 
 
 class SetSourceStatusRunningPipeline:

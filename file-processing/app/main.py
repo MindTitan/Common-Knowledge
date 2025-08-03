@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from contextlib import asynccontextmanager
 import asyncio
 import logging
+import sys
 from app.api import api_router
 from app.services import upload_service
 
@@ -21,6 +22,12 @@ async def cleanup_background_task():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(levelname)s - %(asctime)s - %(name)s - %(message)s",
+        handlers=[logging.StreamHandler(sys.stdout), logging.FileHandler("app.log")],
+    )
+
     # Startup
     logger.info("Starting File Processing API")
     
