@@ -17,7 +17,7 @@ import './SaveAgency.scss';
 interface AgencyFormData {
   name: string;
   sector: string;
-  centopsId: string;
+  externalId: string;
 }
 
 // You'll need to replace this with actual API call to get centops options
@@ -40,7 +40,7 @@ const SaveAgency: FC = () => {
   const [formData, setFormData] = useState<AgencyFormData>({
     name: '',
     sector: '',
-    centopsId: '',
+    externalId: '',
   });
 
   const [formErrors, setFormErrors] = useState<Partial<AgencyFormData>>({});
@@ -59,7 +59,7 @@ const SaveAgency: FC = () => {
       setFormData({
         name: agency.name,
         sector: agency.sector,
-        centopsId: agency.centopsId || '',
+        externalId: agency.externalId || '',
       });
     },
     onError: (error: any) => {
@@ -133,8 +133,8 @@ const SaveAgency: FC = () => {
       errors.sector = t('validation.required');
     }
 
-    if (!formData.centopsId) {
-      errors.centopsId = t('validation.required');
+    if (!formData.externalId) {
+      errors.externalId = t('validation.required');
     }
 
     setFormErrors(errors);
@@ -149,7 +149,7 @@ const SaveAgency: FC = () => {
     const requestData = {
       name: formData.name.trim(),
       sector: formData.sector.trim(),
-      centopsId: formData.centopsId,
+      externalId: formData.externalId,
     };
 
     if (isEditMode) {
@@ -176,9 +176,9 @@ const SaveAgency: FC = () => {
     return (
       formData.name.trim() !== '' &&
       formData.sector.trim() !== '' &&
-      formData.centopsId !== ''
+      formData.externalId !== ''
     );
-  }, [formData.name, formData.sector, formData.centopsId]);
+  }, [formData.name, formData.sector, formData.externalId]);
 
   // Check if form has changes (for edit mode)
   const hasChanges = useMemo(() => {
@@ -187,7 +187,7 @@ const SaveAgency: FC = () => {
     return (
       formData.name !== existingAgency.name ||
       formData.sector !== existingAgency.sector ||
-      formData.centopsId !== (existingAgency.centopsId || '')
+      formData.externalId !== (existingAgency.externalId || '')
     );
   }, [formData, existingAgency, isEditMode]);
 
@@ -280,17 +280,17 @@ const SaveAgency: FC = () => {
             <label>{t('knowledgeBase.centops')}</label>
             <FormSelect
               label={t('knowledgeBase.centops')}
-              name="centopsId"
+              name="externalId"
               hideLabel
               placeholder={t('global.selectOption')}
               style={{ maxWidth: 808 }}
               options={centopsOptions}
-              value={formData.centopsId}
-              defaultValue={formData.centopsId}
+              value={formData.externalId}
+              defaultValue={formData.externalId}
               onSelectionChange={(option) =>
-                handleInputChange('centopsId', option?.value ?? '')
+                handleInputChange('externalId', option?.value ?? '')
               }
-              error={formErrors.centopsId}
+              error={formErrors.externalId}
               required
             />
           </Track>

@@ -14,7 +14,7 @@ declaration:
       - field: sector
         type: string
         description: "Sector of the agency"
-      - field: centopsId
+      - field: externalId
         type: string
         description: "Centops ID for the agency"
 
@@ -22,7 +22,7 @@ extractRequestData:
   assign:
     name: "${incoming.body.name}"
     sector: "${incoming.body.sector}"
-    centops_id: "${incoming.body.centopsId}"
+    external_id: "${incoming.body.externalId}"
 
 createAgency:
   call: http.post
@@ -33,7 +33,7 @@ createAgency:
     body:
       name: ${name}
       sector: ${sector}
-      centops_id: ${centops_id}
+      external_id: ${external_id}
   result: res
 
 returnSuccess:

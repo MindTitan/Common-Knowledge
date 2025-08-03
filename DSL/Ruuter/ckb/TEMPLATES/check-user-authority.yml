@@ -16,14 +16,15 @@ get_tara_info:
 
 check_user_authority:
   switch:
-    - condition: ${tara_res.authorities.includes("ROLE_ADMINISTRATOR")}
+    - condition: ${tara_res?.authorities.includes("ROLE_ADMINISTRATOR")}
       next: return_authorized
-    - condition: ${tara_res.authorities.includes("ROLE_SERVICE_MANAGER")}
+    - condition: ${tara_res?.authorities.includes("ROLE_SERVICE_MANAGER")}
       next: return_authorized
+  next: return_unauthorized
 
 return_unauthorized:
   return: "unauthorized"
-  status: 200
+  status: 401
   next: end
 
 return_authorized:
