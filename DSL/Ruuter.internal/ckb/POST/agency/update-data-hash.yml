@@ -35,6 +35,12 @@ updateAgencyDataHash:
       data_hash: ${incoming.body.results[0].data_hash}
   result: res
 
+scheduleSource:
+  call: http.get
+  args:
+    url: "[#CKB_RUUTER_INTERNAL]/pipeline/scheduler-check-for-unscheduled-records"
+  result: res
+
 returnSuccess:
   return: "OK"
   next: end
