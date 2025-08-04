@@ -262,17 +262,17 @@ const Editor: FC<EditorProps> = ({
               <div className="knowledge-base-detail__form-group knowledge-base-detail__form-group--half">
                 <div className="knowledge-base-detail__form-label">
                   <label className="knowledge-base-detail__label">
-                    {editorState.sourceType === 'scraped'
-                      ? t('knowledgeBase.originallyScraped')
-                      : t('global.uploaded')}
+                    {editorState.sourceType === 'uploaded'
+                      ? t('global.uploaded')
+                      : t('knowledgeBase.originallyScraped')}
                   </label>
                 </div>
                 <div className="knowledge-base-detail__form-value">
                   <span className="knowledge-base-detail__value">
                     {new Date(
-                      editorState.sourceType === 'scraped'
-                        ? (editorState.file as ScrapedFile).originallyScraped
-                        : editorState.file.createdAt
+                      editorState.sourceType === 'uploaded'
+                        ? editorState.file.createdAt
+                        : (editorState.file as ScrapedFile).originallyScraped
                     ).toLocaleDateString('et-EE', {
                       day: '2-digit',
                       month: '2-digit',

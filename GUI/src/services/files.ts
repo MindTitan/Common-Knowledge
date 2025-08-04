@@ -78,7 +78,7 @@ export interface EditorState {
   file?: UploadedFile | ScrapedFile;
   fileId?: string;
   content: string;
-  sourceType: 'uploaded' | 'scraped';
+  sourceType: 'uploaded' | 'scraped' | 'api';
   loading: boolean;
   saving?: boolean;
 }
@@ -258,7 +258,7 @@ export const updateFileEditedContent = async (
 
 export const updateFileEditedDataUrl = async (
   baseId: string,
-  sourcePath: string,
+  sourcePath: string
 ): Promise<void> => {
   const response = await apiDev.post('/source-file/edit-file', {
     base_id: baseId,
@@ -281,14 +281,14 @@ export const updateFileEditedDataUrl = async (
 export const updateFileEditedContentWithUpload = async (
   file: ScrapedFile | UploadedFile,
   content: string,
-  sourcePath: string,
+  sourcePath: string
 ): Promise<void> => {
   try {
     // Get upload URL for the target path - Updated to match backend format
     const uploadResponse = await getUploadUrls({
       files: [
         {
-          path: `${sourcePath}/edited.txt`,
+          path: `uploads/scrapped-data/${sourcePath}/edited.txt`,
           content_type: 'text/plain',
         },
       ],
