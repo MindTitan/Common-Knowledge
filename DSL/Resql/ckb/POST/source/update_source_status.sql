@@ -5,6 +5,12 @@ SELECT copy_row_with_modifications(
         'status', '::source_status_type', :status,
         'updated_at', '::TIMESTAMP WITH TIME ZONE', NOW()::VARCHAR,
         'is_stopping', '::BOOLEAN', FALSE::VARCHAR,
+        'last_scraped_at', '::TIMESTAMP WITH TIME ZONE', CASE
+            WHEN :status::source_status_type = 'finished'
+                THEN NOW()::VARCHAR
+            ELSE
+                last_scraped_at::VARCHAR
+        END,
         'next_scrapping_at', '::TIMESTAMP WITH TIME ZONE', NULL
     ]::VARCHAR[]
 ) as id
