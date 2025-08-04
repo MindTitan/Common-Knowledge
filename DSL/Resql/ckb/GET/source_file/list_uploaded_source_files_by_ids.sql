@@ -11,7 +11,8 @@ SELECT
     id, base_id, source_base_id, file_name, subsector, original_data_url, cleaned_data_url, 
     edited_data_url, is_excluded, created_at, updated_at, status,
     :page as page,
-    CEIL(:total_count::DECIMAL / :page_size::DECIMAL) AS total_pages
+    CEIL(:total_count::DECIMAL / :page_size::DECIMAL) AS total_pages,
+    :total_count AS total
 FROM latest_files
 WHERE is_deleted = FALSE
 ORDER BY 

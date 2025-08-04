@@ -56,13 +56,14 @@ performSearch:
 getSourceFilesByIds:
   call: http.get
   args:
-    url: "[#CKB_RESQL]/source_file/list_${file_type === 'scraped_file' ? 'scraped' : 'uploaded'}_source_files_by_ids"
+    url: "[#CKB_RESQL]/source_file/list_${file_type === 'scraped_file' || file_type === 'api_file' ? 'scraped' : 'uploaded'}_source_files_by_ids"
     query:
       source_file_ids: ${searchResult.response.body.sourceFileIds?.join(',') ?? ''}
       page: ${page}
       page_size: ${page_size}
       sorting: ${sorting}
       total_count: ${searchResult.response.body.total}
+      type: ${file_type}
   result: res
   next: returnSuccess
 

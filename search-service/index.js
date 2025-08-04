@@ -387,6 +387,59 @@ app.delete("/index/:sourceId", async (req, res) => {
   }
 });
 
+// Delete documents by source_file_id
+app.delete("/documents/:sourceId/:sourceFileId", async (req, res) => {
+  try {
+    const { sourceId, sourceFileId } = req.params;
+    const indexName = `source_${sourceId}`;
+
+    // Check if index exists
+    const exists = await opensearch.indices.exists({ index: indexName });
+    if (!exists.body) {
+      return res.status(404).json({
+        error: "Index not found",
+        source_id: sourceId,
+      });
+    }
+
+    console.log(
+      `🗑️  Deleting documents with source_file_id: ${sourceFileId} from source: ${sourceId}`
+    );
+
+    // Use delete by query to remove all documents with the specified source_file_id
+    const deleteResponse = await opensearch.deleteByQuery({
+      index: indexName,
+      body: {
+        query: {
+          term: {
+            source_file_id: sourceFileId,
+          },
+        },
+      },
+    });
+
+    const deletedCount = deleteResponse.body.deleted;
+
+    console.log(
+      `✅ Deleted ${deletedCount} documents with source_file_id: ${sourceFileId}`
+    );
+
+    res.json({
+      success: true,
+      source_id: sourceId,
+      source_file_id: sourceFileId,
+      deleted_count: deletedCount,
+      took: deleteResponse.body.took,
+    });
+  } catch (error) {
+    console.error("❌ Delete by source_file_id error:", error.message);
+    res.status(500).json({
+      error: "Failed to delete documents",
+      details: error.message,
+    });
+  }
+});
+
 // Health check
 app.get("/health", async (req, res) => {
   try {

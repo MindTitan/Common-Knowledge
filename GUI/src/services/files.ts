@@ -24,6 +24,7 @@ export interface UploadedFile {
   baseId: string;
   fileName: string;
   subsector?: string;
+  url?: string;
   isExcluded: boolean;
   status: 'cleaning' | 'finished' | 'failed';
   lastScrapedAt: string;
