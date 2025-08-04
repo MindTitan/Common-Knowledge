@@ -5,7 +5,7 @@ declaration:
   method: post
   accepts: json
   returns: json
-  namespace: source-file
+  namespace: agency
   allowlist:
     body:
       - field: agency_id
@@ -22,9 +22,6 @@ declaration:
       - field: zip_path
         type: string
         description: "ZIP path"
-      - field: source_id
-        type: string
-        description: "optional source_id"
 
 updateAgencyDataHash:
   call: http.post
@@ -36,27 +33,6 @@ updateAgencyDataHash:
       zip_data_url: ${incoming.body.zip_path}
       base_id: ${incoming.body.agency_id}
       data_hash: ${incoming.body.results[0].data_hash}
-  result: res
-
-checkForSourceId:
-  switch:
-    - condition: ${incoming.body.source_id == null}
-      next: returnSuccess
-  next: updateSourceStatus
-
-updateSourceStatus:
-  call: http.post
-  args:
-    url: "[#CKB_RESQL]/source/update_source_status"
-    body:
-      base_id: ${incoming.body.source_id}
-      status: 'finished'
-  result: res
-
-scheduleSource:
-  call: http.get
-  args:
-    url: "[#CKB_RUUTER_INTERNAL]/pipeline/scheduler-check-for-unscheduled-records"
   result: res
 
 returnSuccess:

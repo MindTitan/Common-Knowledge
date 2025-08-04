@@ -182,7 +182,7 @@ class ScrappingFinishedPipeline:
         spider: BaseSpider
         task: BaseObject = spider.task
 
-        requests.post(f'{spider.settings.get('RUUTER_INTERNAL')}/ckb/agency/zip', json={
+        requests.post(f'{spider.settings.get('RUUTER_INTERNAL')}/ckb/agency/update-zip-dirty', json={
             'sourceId': task.source_id,
             'agencyId': task.agency_id,
         })

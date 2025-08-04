@@ -26,6 +26,8 @@ CREATE TABLE agency (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     is_deleted BOOLEAN DEFAULT FALSE,
     zipped_data_url TEXT,
+    zip_dirty BOOLEAN DEFAULT FALSE,
+    is_zipping BOOLEAN DEFAULT FALSE,
     type agency_type NOT NULL DEFAULT 'client',
     data_hash TEXT
 );

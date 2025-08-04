@@ -4,6 +4,7 @@ SELECT copy_row_with_modifications(
     ARRAY[
         'data_hash', '', :data_hash,
         'zipped_data_url', '', :zip_data_url,
+        'is_zipping', '::BOOLEAN', 'FALSE',
         'updated_at', '::TIMESTAMP WITH TIME ZONE', NOW()::VARCHAR
     ]::VARCHAR[]
 ) as id

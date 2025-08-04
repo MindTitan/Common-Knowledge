@@ -65,7 +65,7 @@ moveFilesS3:
 zipFiles:
   call: http.post
   args:
-    url: "[#CKB_RUUTER_INTERNAL]/agency/zip"
+    url: "[#CKB_RUUTER_INTERNAL]/agency/update-zip-dirty"
     headers:
       type: json
     body:

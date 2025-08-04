@@ -37,7 +37,7 @@ deleteSourceFileFromS3:
         - s3_path: "${deleteDbResult.response.body[0].agencyBaseId}/${deleteDbResult.response.body[0].sourceBaseId}/${base_id}/"
           is_folder: true
       callback:
-        url: "[#CKB_RUUTER_INTERNAL]/agency/zip"
+        url: "[#CKB_RUUTER_INTERNAL]/agency/update-zip-dirty"
         method: "POST"
         body:
           agencyId: "${deleteDbResult.response.body[0].agencyBaseId}"

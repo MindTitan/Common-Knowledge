@@ -1,16 +1,16 @@
 SELECT copy_row_with_modifications(
-    'source_file',
+    'agency',
     'id', '::UUID', id::VARCHAR,
     ARRAY[
-        'edited_data_url', '::TEXT', :edited_data_url,
+        'zip_dirty', '::BOOLEAN', 'TRUE',
         'updated_at', '::TIMESTAMP WITH TIME ZONE', NOW()::VARCHAR
     ]::VARCHAR[]
-) as id, page_title, file_name, url, subsector, source_base_id, agency_base_id
-FROM source_file
+) as id
+FROM agency
 WHERE base_id = :base_id::UUID
   AND updated_at = (
-      SELECT MAX(updated_at)
-      FROM source_file
+      SELECT MAX(updated_at) 
+      FROM agency 
       WHERE base_id = :base_id::UUID
   )
   AND is_deleted = FALSE;

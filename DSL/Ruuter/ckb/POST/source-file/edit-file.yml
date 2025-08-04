@@ -31,6 +31,16 @@ updateSourceFileEditedUrl:
       edited_data_url: ${edited_data_url}
   result: updateResult
 
+zipFiles:
+  call: http.post
+  args:
+    url: "[#CKB_RUUTER_INTERNAL]/agency/update-zip-dirty"
+    headers:
+      type: json
+    body:
+      agencyId: "${updateResult.response.body[0].agencyBaseId}"
+  result: zipFilesResult
+
 validateUpdate:
   switch:
     - condition: "${updateResult.response.length == 0}"
