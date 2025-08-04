@@ -43,7 +43,24 @@ getOneSourceToRun:
     contentType: json
   result: sourceToRun
 
-triggerPipelineForSource:
+assignPipelineTemplate:
+  maxRecursions: 999
+  switch:
+    - condition: ${sourceToRun.response.body[0].type == "api"}
+      next: triggerApiPipelineForSource
+  next: triggerScrapperPipelineForSource
+
+triggerApiPipelineForSource:
+  maxRecursions: 999
+  template: "[#CKB_PROJECT_LAYER]/pipeline/trigger-scrapper-eesti-api-source"
+  requestType: templates
+  body:
+    source_id: ${sourceToRun.response.body[0].baseId}
+    agency_id: ${sourceToRun.response.body[0].agencyBaseId}
+  result: res
+  next: checkSourceToRunExists
+
+triggerScrapperPipelineForSource:
   maxRecursions: 999
   template: "[#CKB_PROJECT_LAYER]/pipeline/trigger-scrapper-entire-source"
   requestType: templates

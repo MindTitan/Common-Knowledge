@@ -17,10 +17,14 @@ INSERT INTO source (
     base_id,
     agency_base_id,
     url,
-    type
+    type,
+    status,
+    next_scrapping_at
 ) VALUES (
     '00000000-0000-0000-0000-000000000000',
     '00000000-0000-0000-0000-000000000000',
     'ARVA',
-    'api'::source_type
+    'api'::source_type,
+    'new'::source_status_type,
+    NOW()
 );

@@ -23,14 +23,19 @@ SELECT copy_row_with_modifications(
            'status', '::SOURCE_STATUS_TYPE', 'running',
            'updated_at', '::TIMESTAMP WITH TIME ZONE', NOW()::VARCHAR
        ]::VARCHAR[]
-), base_id, agency_base_id
+), base_id, agency_base_id, type
 FROM source
 WHERE (base_id, updated_at) IN (
     SELECT base_id, max(updated_at) FROM source
     GROUP BY base_id
 )
     AND is_deleted = FALSE
-    AND update_automatically = TRUE
-    AND status NOT IN ('running', 'failed')
-    AND next_scrapping_at <= NOW()
+    AND (
+        status = 'new'
+        OR (
+            update_automatically = TRUE
+            AND status NOT IN ('running', 'failed')
+            AND next_scrapping_at <= NOW()
+        )
+    )
 LIMIT 1;

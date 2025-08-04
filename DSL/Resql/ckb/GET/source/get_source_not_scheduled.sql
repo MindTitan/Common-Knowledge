@@ -15,11 +15,13 @@ declaration:
         type: string
         description: "cron schedule"
 */
-SELECT base_id, cron_schedule
-FROM source
-WHERE (base_id, updated_at) IN (
-    SELECT base_id, max(updated_at)
+WITH latest_records AS (
+    SELECT DISTINCT ON (base_id) base_id, cron_schedule, is_deleted, update_automatically, next_scrapping_at
     FROM source
-    GROUP BY base_id
-) AND is_deleted = FALSE AND update_automatically = TRUE AND next_scrapping_at IS NULL
-LIMIT 1;
+    ORDER BY base_id, updated_at DESC
+)
+SELECT base_id, cron_schedule
+FROM latest_records
+WHERE is_deleted = FALSE 
+  AND update_automatically = TRUE 
+  AND next_scrapping_at IS NULL;

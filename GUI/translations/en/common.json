@@ -471,6 +471,7 @@
   },
   "knowledgeBase": {
     "id": "ID",
+    "new": "New",
     "title": "Common knowledge base",
     "agency": "Agency",
     "agencies": "Agencies",

@@ -19,6 +19,11 @@ WHERE (base_id, updated_at) IN (
     GROUP BY base_id
 )
     AND is_deleted = FALSE
-    AND update_automatically = TRUE
-    AND status NOT IN ('running', 'failed')
-    AND next_scrapping_at <= NOW();
+    AND (
+        status = 'new'
+        OR (
+            update_automatically = TRUE
+            AND status NOT IN ('running', 'failed')
+            AND next_scrapping_at <= NOW()
+        )
+    );

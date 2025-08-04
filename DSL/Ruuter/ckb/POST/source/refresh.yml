@@ -25,14 +25,29 @@ getSource:
       base_id: ${base_id}
   result: sourceToRun
 
-triggerPipelineForSource:
+assignPipelineTemplate:
+  switch:
+    - condition: ${sourceToRun.response.body[0].type == "api"}
+      next: triggerApiPipelineForSource
+  next: triggerScrapperPipelineForSource
+
+triggerApiPipelineForSource:
+  template: "[#CKB_PROJECT_LAYER]/pipeline/trigger-scrapper-eesti-api-source"
+  requestType: templates
+  body:
+    source_id: ${sourceToRun.response.body[0].baseId}
+    agency_id: ${sourceToRun.response.body[0].agencyBaseId}
+  result: res
+  next: returnResult
+
+triggerScrapperPipelineForSource:
   template: "[#CKB_PROJECT_LAYER]/pipeline/trigger-scrapper-entire-source"
   requestType: templates
   body:
     source_id: ${sourceToRun.response.body[0].baseId}
     agency_id: ${sourceToRun.response.body[0].agencyBaseId}
   result: res
-
+  next: returnResult
 
 returnResult:
   return: "OK"

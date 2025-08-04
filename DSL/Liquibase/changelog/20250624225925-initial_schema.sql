@@ -12,7 +12,7 @@ CREATE EXTENSION IF NOT EXISTS hstore;
 -- Create custom ENUM types
 CREATE TYPE agency_type AS ENUM ('client', 'api');
 CREATE TYPE source_type AS ENUM ('url_to_scrape', 'file', 'api');
-CREATE TYPE source_status_type AS ENUM ('running', 'finished', 'failed');
+CREATE TYPE source_status_type AS ENUM ('new', 'running', 'finished', 'failed');
 CREATE TYPE source_file_status_type AS ENUM ('scraping', 'cleaning', 'finished', 'not_found', 'failed');
 CREATE TYPE source_file_type AS ENUM ('scraped_file', 'uploaded_file', 'api_file');
 
