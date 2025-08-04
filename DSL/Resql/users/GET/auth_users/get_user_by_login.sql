@@ -10,9 +10,6 @@ declaration:
       - field: login
         type: string
         description: "User login name"
-      - field: password
-        type: string
-        description: "Hashed user password"
   response:
     fields:
       - field: login
@@ -37,21 +34,18 @@ declaration:
           enum: ['ROLE_ADMINISTRATOR', 'ROLE_SERVICE_MANAGER', 'ROLE_CUSTOMER_SUPPORT_AGENT', 'ROLE_CHATBOT_TRAINER', 'ROLE_ANALYST', 'ROLE_UNAUTHENTICATED']
         description: "List of user authorities"
 */
-SELECT
-    login,
-    first_name,
-    last_name,
-    id_code,
-    display_name,
-    authority_name AS authorities
-FROM auth_users.denormalized_user_data AS d_1
-WHERE
-    id_code = :login
-    AND password_hash = :password
-    AND ARRAY_LENGTH(authority_name, 1) > 0
-    AND created = (
-        SELECT MAX(d_2.created)
-        FROM auth_users.denormalized_user_data AS d_2
-        WHERE d_2.id_code = d_1.id_code
-    )
-LIMIT 1;
+SELECT DISTINCT u.login,
+       u.first_name,
+       u.last_name,
+       u.id_code,
+       u.display_name,
+       u.csa_title,
+       u.csa_email,
+       ua.authority_name AS authorities
+FROM "user" u
+         LEFT JOIN (SELECT authority_name, user_id
+                     FROM user_authority AS ua
+                     WHERE ua.id IN (SELECT max(id)
+                                     FROM user_authority
+                                     GROUP BY user_id)) ua ON u.id_code = ua.user_id
+WHERE login = :login;

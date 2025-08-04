@@ -258,11 +258,11 @@ export const updateFileEditedContent = async (
 
 export const updateFileEditedDataUrl = async (
   baseId: string,
-  editedDataUrl: string
+  sourcePath: string,
 ): Promise<void> => {
   const response = await apiDev.post('/source-file/edit-file', {
     base_id: baseId,
-    edited_data_url: `uploads/scrapped-data/${editedDataUrl}`,
+    source_file_path: sourcePath,
   });
 
   const apiResponse = response.data;
@@ -281,14 +281,14 @@ export const updateFileEditedDataUrl = async (
 export const updateFileEditedContentWithUpload = async (
   file: ScrapedFile | UploadedFile,
   content: string,
-  path: string
+  sourcePath: string,
 ): Promise<void> => {
   try {
     // Get upload URL for the target path - Updated to match backend format
     const uploadResponse = await getUploadUrls({
       files: [
         {
-          path,
+          path: `${sourcePath}/edited.txt`,
           content_type: 'text/plain',
         },
       ],
@@ -308,7 +308,7 @@ export const updateFileEditedContentWithUpload = async (
     await uploadContentToS3(uploadUrl, content, 'text/plain');
 
     // Update database with the edited data URL
-    await updateFileEditedDataUrl(file.baseId, path);
+    await updateFileEditedDataUrl(file.baseId, sourcePath);
   } catch (error) {
     console.error('Error updating file with upload:', error);
     throw error;

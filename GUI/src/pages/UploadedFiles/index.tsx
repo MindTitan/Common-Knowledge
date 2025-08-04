@@ -320,11 +320,11 @@ const UploadedFiles: FC = () => {
         throw new Error('No file available for saving');
       }
       setEditorState({ ...editorState, saving: true });
-      const editedFilePath = `${sourceData?.agencyBaseId}/${sourceData?.baseId}/${editorState.file.baseId}/edited.txt`;
+      const sourcePath = `${sourceData?.agencyBaseId}/${sourceData?.baseId}/${editorState.file.baseId}`;
       return updateFileEditedContentWithUpload(
         editorState.file,
         content,
-        editedFilePath
+        sourcePath
       );
     },
     onSuccess: () => {

@@ -24,6 +24,7 @@ class MetadataItem:
     external_id: Optional[str] = ""
     version: str = "1.0"
     created_at: str = field(default_factory=lambda: str(datetime.now()))
+    edited_at: str | None = None
 
 
 @dataclass
