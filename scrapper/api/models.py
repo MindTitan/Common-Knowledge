@@ -42,3 +42,9 @@ class UploadFile(LinkToScrape):
 class UploadedFileTask(BaseObject):
     download_files: list[DownloadUrlItem]
     urls: list[UploadFile]
+
+
+class EditedMetadataTask(BaseModel):
+    download_url: str
+    source_file_id: str
+    source_file_path: str

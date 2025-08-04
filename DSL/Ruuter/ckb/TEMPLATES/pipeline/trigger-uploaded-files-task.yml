@@ -8,7 +8,7 @@ extractRequestData:
 triggerScrapper:
   call: http.post
   args:
-    url: "[#CKB_SCRAPPER_SERVICE]/uploaded_file"
+    url: "[#CKB_SCRAPPER_SERVICE]/uploaded-file"
     contentType: json
     body:
       agency_id: ${agency_id}

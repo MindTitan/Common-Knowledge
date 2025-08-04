@@ -11,14 +11,40 @@ declaration:
       - field: base_id
         type: string
         description: "Base ID of the source file to update"
-      - field: edited_data_url
+      - field: source_file_path
         type: string
-        description: "S3 path of the edited file"
+        description: "S3 path of the source file"
 
 extractRequestData:
   assign:
     base_id: "${incoming.body.base_id}"
-    edited_data_url: "${incoming.body.edited_data_url}"
+    edited_data_url: "uploads/scrapped-data/${incoming.body.source_file_path}/edited.txt"
+    source_file_path: "${incoming.body.source_file_path}"
+
+requestDownloadUrlsForCleanedMetadata:
+  call: http.post
+  args:
+    url: "[#CKB_FILE_MANAGER]/download-urls"
+    headers:
+      Content-Type: application/json
+      accept: application/json
+    body:
+      paths:
+        - "uploads/scrapped-data/${source_file_path}/cleaned.meta.json"
+  result: downloadResponse
+
+createEditedMetadata:
+  call: http.post
+  args:
+    url: "[#CKB_SCRAPPER_SERVICE]/generate-edited-metadata"
+    headers:
+      type: json
+    contentType: json
+    body:
+      download_url: ${downloadResponse.response.body.download_urls[0].download_url}
+      source_file_id: ${base_id}
+      source_file_path: "/scrapped-data/${source_file_path}"
+  result: createEditedMetadataResponse
 
 updateSourceFileEditedUrl:
   call: http.post
@@ -29,19 +55,14 @@ updateSourceFileEditedUrl:
     body:
       base_id: ${base_id}
       edited_data_url: ${edited_data_url}
+      edited_metadata_url: "uploads/scrapped-data/${source_file_path}/edited.meta.json"
   result: updateResult
 
 validateUpdate:
   switch:
     - condition: "${updateResult.response.length == 0}"
       next: fileNotFoundError
-  next: assignDownloadData
-
-assignDownloadData:
-  assign:
-    data:
-      { "s3_path": "${edited_data_url}", "local_path": "${edited_data_url}" }
-    updated_file: ${updateResult.response.body[0]}
+  next: downloadFilesToVolume
 
 downloadFilesToVolume:
   call: http.post
@@ -50,7 +71,9 @@ downloadFilesToVolume:
     headers:
       type: json
     body:
-      files: ${[data]}
+      files:
+        - s3_path: ${edited_data_url}
+          local_path: ${edited_data_url}
   result: downloadResult
 
 prepareSearchDocument:
@@ -63,22 +86,18 @@ prepareSearchDocument:
       base_id: ${base_id}
       document_type: "edited_file"
       content_path: ${edited_data_url}
-      updated_file: ${updated_file}
+      updated_file: ${updateResult.response.body[0]}
   result: searchDocResult
 
 updateSearchIndex:
   call: http.post
   args:
-    url: "[#CKB_SEARCH]/index/${updated_file.sourceBaseId}/bulk"
+    url: "[#CKB_SEARCH]/index/${updateResult.response.body[0].sourceBaseId}/bulk"
     headers:
       type: json
     body:
       documents: ${searchDocResult.response.body}
   result: searchResult
-
-assignDeleteData:
-  assign:
-    delete_data: { "local_path": "${edited_data_url}" }
 
 deleteFileFromVolume:
   call: http.post
@@ -87,7 +106,8 @@ deleteFileFromVolume:
     headers:
       type: json
     body:
-      files: ${[delete_data]}
+      files:
+        - local_path: ${edited_data_url}
   result: deleteResult
 
 handleSearchError:
