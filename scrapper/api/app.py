@@ -9,11 +9,11 @@ from fastapi import FastAPI
 
 from api.models import (
     SpecifiedLinksScrapeTask, SitemapCollectScrapperTask, EntireSourceScrapperTask, UploadedFileTask,
-    LinkToScrape, EditedMetadataTask
+    LinkToScrape, EditedMetadataTask, SpecifiedApiFilesScrapeTask
 )
 from worker.tasks import (
     specified_links_scrapper_task, sitemap_collect_scrapper_task,
-    entire_source_scrapped_task, uploaded_file_task,
+    entire_source_scrapped_task, uploaded_file_task, specified_api_files_scrapper_task
 )
 from api.models import EestiScrapperTask
 from worker.tasks import eesti_scrapper_task
@@ -57,6 +57,9 @@ def trigger_entire_source_scrapper_task(task: EntireSourceScrapperTask):
 def trigger_eesti_scrapper_task(task: EestiScrapperTask):
     eesti_scrapper_task.delay(task.model_dump(mode='json'))
 
+@app.post('/specified-api-files-scrapper-task')
+def trigger_specified_api_files_scrapper_task(task: SpecifiedApiFilesScrapeTask):
+    specified_api_files_scrapper_task.delay(task.model_dump(mode='json'))
 
 @app.post('/generate-edited-metadata')
 def generate_edited_metadata(task: EditedMetadataTask):

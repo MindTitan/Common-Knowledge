@@ -16,8 +16,6 @@ extractRequestData:
   assign:
     base_id: "${incoming.body.baseId}"
 
-
-
 getSourceFile:
   call: http.post
   args:
@@ -27,6 +25,22 @@ getSourceFile:
       base_id: ${base_id}
   result: sourceFileToRun
 
+assignPipelineTemplate:
+  switch:
+    - condition: ${sourceFileToRun.response.body[0].type == "api_file"}
+      next: triggerApiPipelineForSourceFile
+  next: triggerPipelineForSourceFile
+
+triggerApiPipelineForSourceFile:
+  template: "[#CKB_PROJECT_LAYER]/pipeline/trigger-scrapper-eesti-api-specified-files"
+  requestType: templates
+  body:
+    source_id: ${sourceFileToRun.response.body[0].sourceBaseId}
+    agency_id: ${sourceFileToRun.response.body[0].agencyBaseId}
+    source_files: ${sourceFileToRun.response.body}
+  result: res
+  next: returnResult
+
 triggerPipelineForSourceFile:
   template: "[#CKB_PROJECT_LAYER]/pipeline/trigger-scrapper-specified-pages"
   requestType: templates
@@ -35,7 +49,6 @@ triggerPipelineForSourceFile:
     agency_id: ${sourceFileToRun.response.body[0].agencyBaseId}
     source_files: ${sourceFileToRun.response.body}
   result: res
-
 
 returnResult:
   return: "OK"

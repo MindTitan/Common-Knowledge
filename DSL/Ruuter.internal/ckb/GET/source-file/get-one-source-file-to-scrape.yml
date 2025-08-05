@@ -7,14 +7,13 @@ declaration:
   returns: json
   namespace: ckb
   allowlist:
-    query:
+    params:
       - field: source_id
         type: string
         description: "source base id"
       - field: reference_time
         type: string
         description: "fetch source which were scrapped before"
-
 
 getSourceFilesForSource:
   call: http.post
@@ -24,7 +23,6 @@ getSourceFilesForSource:
       source_base_id: ${incoming.params.source_id}
       reference_time: ${incoming.params.reference_time}
   result: sourceFiles
-
 
 returnResult:
   return: ${sourceFiles.response.body}

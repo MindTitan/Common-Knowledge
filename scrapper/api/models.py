@@ -48,3 +48,13 @@ class EditedMetadataTask(BaseModel):
     download_url: str
     source_file_id: str
     source_file_path: str
+
+class ApiFileToScrape(BaseModel):
+    id: str
+    hash: str
+    externalId: str
+
+
+class SpecifiedApiFilesScrapeTask(BaseObject):
+    api_files: list[ApiFileToScrape]
+

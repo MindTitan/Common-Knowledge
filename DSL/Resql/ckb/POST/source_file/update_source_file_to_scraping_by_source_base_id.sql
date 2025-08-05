@@ -36,7 +36,7 @@ SELECT
             'updated_at', '::TIMESTAMP WITH TIME ZONE', NOW()::VARCHAR
         ]::VARCHAR[]
     ),
-    base_id as id, url, original_data_hash as hash
+    base_id as id, url, original_data_hash as hash, external_id
 FROM source_file
 WHERE (base_id, updated_at) IN (
         SELECT base_id, max(updated_at)
@@ -46,7 +46,7 @@ WHERE (base_id, updated_at) IN (
     )
     AND is_excluded = FALSE
     AND is_deleted = FALSE
-    AND type = 'scraped_file'
+    AND (type = 'scraped_file' OR type = 'api_file')
     AND status = 'finished'::SOURCE_FILE_STATUS_TYPE
     AND last_scraped_at < :reference_time::TIMESTAMP WITH TIME ZONE
 LIMIT 1;

@@ -26,7 +26,7 @@ updateAgencyDirty:
 
 checkForSourceId:
   switch:
-    - condition: ${incoming.body.source_id == null}
+    - condition: ${incoming.body.sourceId == null}
       next: returnSuccess
   next: updateSourceStatus
 
@@ -35,7 +35,7 @@ updateSourceStatus:
   args:
     url: "[#CKB_RESQL]/source/update_source_status"
     body:
-      base_id: ${incoming.body.source_id}
+      base_id: ${incoming.body.sourceId}
       status: "finished"
   result: res
 

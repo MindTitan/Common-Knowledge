@@ -36,7 +36,7 @@ SELECT
             'updated_at', '::TIMESTAMP WITH TIME ZONE', NOW()::VARCHAR
         ]::VARCHAR[]
     ),
-    base_id as id, url, original_data_hash as hash, source_base_id, agency_base_id
+    base_id as id, url, original_data_hash as hash, source_base_id, agency_base_id, type, external_id
 FROM source_file
 WHERE base_id = :base_id::UUID AND
     updated_at = (
@@ -45,5 +45,5 @@ WHERE base_id = :base_id::UUID AND
         WHERE base_id = :base_id::UUID
     )
     AND is_deleted = FALSE
-    AND type = 'scraped_file'
+    AND (type = 'scraped_file' OR type = 'api_file')
 LIMIT 1;
